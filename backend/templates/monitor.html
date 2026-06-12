@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clock In Out Monitor</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1d2b26;
+      --muted: #60716b;
+      --line: #d9e4df;
+      --panel: #ffffff;
+      --bg: #f4f8f6;
+      --accent: #0e7a5f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    header {
+      padding: 24px 32px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }
+    h1, h2, p { margin-top: 0; }
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 24px auto;
+      display: grid;
+      gap: 20px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 14px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .metric {
+      font-size: 34px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .muted { color: var(--muted); }
+    code {
+      display: inline-block;
+      padding: 4px 7px;
+      border-radius: 6px;
+      background: #edf4f1;
+      color: #073f32;
+      word-break: break-all;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+    }
+    th { color: var(--muted); font-weight: 600; }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Clock In Out Monitor</h1>
+    <p class="muted">Backend status and LAN connection details for frontend setup.</p>
+    <div class="status"><span class="dot"></span> Backend online</div>
+  </header>
+
+  <main>
+    <section class="grid">
+      <div class="panel">
+        <div class="metric">{{ institution_count }}</div>
+        <div class="muted">Institutions</div>
+      </div>
+      <div class="panel">
+        <div class="metric">{{ trainer_count }}</div>
+        <div class="muted">Trainers</div>
+      </div>
+      <div class="panel">
+        <div class="metric">{{ unit_count }}</div>
+        <div class="muted">Units</div>
+      </div>
+      <div class="panel">
+        <div class="metric">{{ active_session_count }}</div>
+        <div class="muted">Active classes</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Frontend Backend URLs</h2>
+      <p class="muted">Use one of these URLs in the desktop app backend server settings.</p>
+      {% if network.addresses %}
+        <table>
+          <thead>
+            <tr>
+              <th>IP Address</th>
+              <th>Backend URL</th>
+              <th>Health Check</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for address in network.addresses %}
+              <tr>
+                <td>{{ address.ip }}</td>
+                <td><code>{{ address.backend_url }}</code></td>
+                <td><code>{{ address.health_url }}</code></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p>No LAN address was detected. Confirm the backend host is connected to the school network.</p>
+      {% endif %}
+      <p class="muted">Hostname: {{ network.hostname }} | Request host: {{ network.request_host }}</p>
+    </section>
+
+    <section class="panel">
+      <h2>Active Classes</h2>
+      {% if active_sessions %}
+        <table>
+          <thead>
+            <tr>
+              <th>Trainer</th>
+              <th>Unit</th>
+              <th>Clocked In</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for session in active_sessions %}
+              <tr>
+                <td>{{ session.trainer.name }}</td>
+                <td>{{ session.unit.code }} - {{ session.unit.name }}</td>
+                <td>{{ session.clock_in_at }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="muted">No active classes right now.</p>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>

@@ -36,6 +36,13 @@ class _AttendanceTerminalScreenState extends State<AttendanceTerminalScreen> {
   );
   final idController = TextEditingController();
   final pinController = TextEditingController();
+  final schoolNameController = TextEditingController();
+  final schoolEmailController = TextEditingController();
+  final schoolPhoneController = TextEditingController();
+  final schoolAddressController = TextEditingController();
+  final defaultClassMinutesController = TextEditingController(text: '60');
+  final allowanceMinutesController = TextEditingController(text: '10');
+  int selectedSection = 0;
   String connectionStatus = 'Not tested';
   bool isCheckingConnection = false;
 
@@ -44,6 +51,12 @@ class _AttendanceTerminalScreenState extends State<AttendanceTerminalScreen> {
     backendUrlController.dispose();
     idController.dispose();
     pinController.dispose();
+    schoolNameController.dispose();
+    schoolEmailController.dispose();
+    schoolPhoneController.dispose();
+    schoolAddressController.dispose();
+    defaultClassMinutesController.dispose();
+    allowanceMinutesController.dispose();
     super.dispose();
   }
 
@@ -84,63 +97,46 @@ class _AttendanceTerminalScreenState extends State<AttendanceTerminalScreen> {
     return Scaffold(
       body: Row(
         children: [
+          NavigationRail(
+            selectedIndex: selectedSection,
+            onDestinationSelected: (index) {
+              setState(() {
+                selectedSection = index;
+              });
+            },
+            labelType: NavigationRailLabelType.all,
+            destinations: const [
+              NavigationRailDestination(
+                icon: Icon(Icons.schedule),
+                label: Text('Clock'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.admin_panel_settings),
+                label: Text('Admin'),
+              ),
+            ],
+          ),
+          const VerticalDivider(width: 1),
           Expanded(
             flex: 3,
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Clock In Out',
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700),
+            child: selectedSection == 0
+                ? ClockSection(
+                    backendUrlController: backendUrlController,
+                    idController: idController,
+                    pinController: pinController,
+                    isCheckingConnection: isCheckingConnection,
+                    connectionStatus: connectionStatus,
+                    onTestConnection: testBackendConnection,
+                  )
+                : AdminSetupSection(
+                    schoolNameController: schoolNameController,
+                    schoolEmailController: schoolEmailController,
+                    schoolPhoneController: schoolPhoneController,
+                    schoolAddressController: schoolAddressController,
+                    defaultClassMinutesController:
+                        defaultClassMinutesController,
+                    allowanceMinutesController: allowanceMinutesController,
                   ),
-                  const SizedBox(height: 8),
-                  const Text('Trainer attendance terminal'),
-                  const SizedBox(height: 28),
-                  TextField(
-                    controller: backendUrlController,
-                    decoration: const InputDecoration(
-                      labelText: 'Backend Server URL',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      FilledButton.icon(
-                        onPressed:
-                            isCheckingConnection ? null : testBackendConnection,
-                        icon: const Icon(Icons.wifi_tethering),
-                        label: const Text('Test Connection'),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(child: Text(connectionStatus)),
-                    ],
-                  ),
-                  const Spacer(),
-                  TextField(
-                    controller: idController,
-                    decoration: const InputDecoration(
-                      labelText: 'Trainer ID Number',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: pinController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'PIN',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  FilledButton(onPressed: () {}, child: const Text('Continue')),
-                  const Spacer(),
-                ],
-              ),
-            ),
           ),
           Container(
             width: 380,
@@ -155,6 +151,206 @@ class _AttendanceTerminalScreenState extends State<AttendanceTerminalScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class ClockSection extends StatelessWidget {
+  const ClockSection({
+    required this.backendUrlController,
+    required this.idController,
+    required this.pinController,
+    required this.isCheckingConnection,
+    required this.connectionStatus,
+    required this.onTestConnection,
+    super.key,
+  });
+
+  final TextEditingController backendUrlController;
+  final TextEditingController idController;
+  final TextEditingController pinController;
+  final bool isCheckingConnection;
+  final String connectionStatus;
+  final VoidCallback onTestConnection;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 680),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Clock In Out',
+              style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            const Text('Trainer attendance terminal'),
+            const SizedBox(height: 28),
+            TextField(
+              controller: backendUrlController,
+              decoration: const InputDecoration(
+                labelText: 'Backend Server URL',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                FilledButton.icon(
+                  onPressed: isCheckingConnection ? null : onTestConnection,
+                  icon: const Icon(Icons.wifi_tethering),
+                  label: const Text('Test Connection'),
+                ),
+                Text(connectionStatus),
+              ],
+            ),
+            const SizedBox(height: 56),
+            TextField(
+              controller: idController,
+              decoration: const InputDecoration(
+                labelText: 'Trainer ID Number',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: pinController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'PIN',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton(onPressed: () {}, child: const Text('Continue')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AdminSetupSection extends StatelessWidget {
+  const AdminSetupSection({
+    required this.schoolNameController,
+    required this.schoolEmailController,
+    required this.schoolPhoneController,
+    required this.schoolAddressController,
+    required this.defaultClassMinutesController,
+    required this.allowanceMinutesController,
+    super.key,
+  });
+
+  final TextEditingController schoolNameController;
+  final TextEditingController schoolEmailController;
+  final TextEditingController schoolPhoneController;
+  final TextEditingController schoolAddressController;
+  final TextEditingController defaultClassMinutesController;
+  final TextEditingController allowanceMinutesController;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 820),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Admin Setup',
+              style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            const Text('Institution branding and attendance policy'),
+            const SizedBox(height: 28),
+            OutlinedButton.icon(
+              onPressed: null,
+              icon: const Icon(Icons.image_outlined),
+              label: const Text('Upload School Logo'),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: schoolNameController,
+              decoration: const InputDecoration(
+                labelText: 'School Name',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: schoolEmailController,
+                    decoration: const InputDecoration(
+                      labelText: 'School Email',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextField(
+                    controller: schoolPhoneController,
+                    decoration: const InputDecoration(
+                      labelText: 'School Phone',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: schoolAddressController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Address',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: defaultClassMinutesController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Default Class Minutes',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextField(
+                    controller: allowanceMinutesController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Clock-out Allowance Minutes',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: null,
+              icon: const Icon(Icons.save_outlined),
+              label: const Text('Save Institution Setup'),
+            ),
+          ],
+        ),
       ),
     );
   }

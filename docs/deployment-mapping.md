@@ -39,6 +39,7 @@ Working check:
 - Django admin opens.
 - Flutter app launches.
 - Flutter app shows backend connection status.
+- Backend monitor opens and shows usable LAN backend URLs.
 
 ## Phase 2: Institution Setup
 
@@ -51,6 +52,7 @@ Steps:
 3. Add clock-out allowance minutes.
 4. Save settings to Django backend.
 5. Display school logo/name in desktop app header.
+6. Verify the setup screen in Flutter web before packaging the desktop app.
 
 Working check:
 

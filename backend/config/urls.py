@@ -6,7 +6,7 @@ from rest_framework.routers import DefaultRouter
 
 from academics.api import UnitViewSet
 from attendance.api import AttendanceSessionViewSet
-from config.views import health_check
+from config.views import health_check, monitor_dashboard, network_info
 from institutions.api import InstitutionViewSet
 from trainers.api import TrainerViewSet
 
@@ -18,8 +18,10 @@ router.register("trainers", TrainerViewSet)
 router.register("attendance-sessions", AttendanceSessionViewSet)
 
 urlpatterns = [
+    path("", monitor_dashboard, name="monitor-dashboard"),
     path("admin/", admin.site.urls),
     path("api/health/", health_check, name="health-check"),
+    path("api/network/", network_info, name="network-info"),
     path("api/", include(router.urls)),
 ]
 

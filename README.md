@@ -28,6 +28,26 @@ This keeps setup simple on Windows and Linux while still discouraging proxy atte
 
 See [docs/deployment-mapping.md](docs/deployment-mapping.md) for the full build, test, and LAN deployment roadmap.
 
+## Development Browser Testing
+
+During development, both Flutter apps should be tested in a computer web browser before packaging desktop/mobile builds.
+
+Desktop attendance app:
+
+```powershell
+cd frontend\desktop_attendance
+flutter run -d chrome --web-port 5100
+```
+
+Mobile registration app:
+
+```powershell
+cd frontend\mobile_registration
+flutter run -d chrome --web-port 5200
+```
+
+Final distribution builds should happen after the browser-tested flows are complete.
+
 ## Desktop App Scope
 
 The desktop app is the main operating app for the school.
@@ -66,6 +86,39 @@ http://192.168.1.50:8000
 ```
 
 The superadmin will set this backend URL in the system/frontend configuration. The desktop app must store this URL locally so it knows where to send API requests.
+
+The backend automatically allows access through:
+
+- `localhost`
+- `127.0.0.1`
+- the backend computer hostname
+- the backend computer detected LAN IP addresses
+
+This lets the school admin open the backend dashboard and setup pages from the backend machine or from another computer on the school network. If needed, extra hostnames/IPs can still be added with the `DJANGO_ALLOWED_HOSTS` environment variable.
+
+## Backend Monitor Dashboard
+
+The backend includes a small monitor dashboard:
+
+```text
+http://127.0.0.1:8000/
+```
+
+On the backend host machine, this dashboard shows:
+
+- backend online status
+- institution count
+- trainer count
+- unit count
+- active class count
+- detected LAN IP addresses
+- backend URLs that the frontend apps can use
+
+The same network information is available as JSON:
+
+```text
+http://127.0.0.1:8000/api/network/
+```
 
 ## Backend IP Change Handling
 

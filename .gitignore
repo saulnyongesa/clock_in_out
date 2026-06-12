@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+.venv/
+venv/
+env/
+.env
+media/
+staticfiles/
+
+# Django
+local_settings.py
+
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub-cache/
+build/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Imported legacy project
+TutorTime-main/

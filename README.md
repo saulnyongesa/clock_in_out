@@ -1,110 +1,97 @@
 # Clock In Out
 
-Modern trainer attendance system.
+Modern web-based trainer attendance system for schools.
 
-This repository is a mono-repo: the Django backend, Flutter desktop app, and Flutter mobile registration app live together so they can evolve as one product.
+The system is now web-first: Django serves both the backend API and the browser interface. Future desktop or mobile apps can be added later by consuming the same API endpoints.
 
 ## Repository Layout
 
-- `backend/` - Django API and admin backend.
-- `frontend/desktop_attendance/` - Flutter desktop app for daily trainer clock-in/out and the admin dashboard.
-- `frontend/mobile_registration/` - Flutter mobile app for trainer registration and profile/photo capture.
-- `docs/` - Product and architecture notes.
+- `backend/` - Django web app, templates, API endpoints, admin, and attendance backend.
+- `docs/` - Product, architecture, and deployment notes.
 
-## Authentication Direction
+## Current Web Pages
 
-Face recognition has been dropped for simplicity and reliability.
+- Public landing page: `http://127.0.0.1:8000/`
+- Main dashboard: `http://127.0.0.1:8000/app/`
+- System setup: `http://127.0.0.1:8000/app/setup/`
+- Trainers: `http://127.0.0.1:8000/app/trainers/`
+- Units: `http://127.0.0.1:8000/app/units/`
+- Assignments: `http://127.0.0.1:8000/app/assignments/`
+- Active classes: `http://127.0.0.1:8000/app/active-classes/`
+- Attendance history: `http://127.0.0.1:8000/app/attendance/`
+- Reports: `http://127.0.0.1:8000/app/reports/`
+- Backend monitor: `http://127.0.0.1:8000/app/system/monitor/`
+- Trainer clock in/out: `http://127.0.0.1:8000/trainer/clock/`
+- Django admin: `http://127.0.0.1:8000/admin/`
 
-The first version will use:
+## Core Direction
+
+The system uses:
 
 - Trainer ID number.
-- Trainer PIN/passcode.
-- Mandatory camera snapshot at clock-in and clock-out for audit.
+- DeepFace verification against the trainer photo registered for that ID.
+- Mandatory camera preview and audit snapshot at clock-in and clock-out.
 - Admin-managed trainer records.
+- Web templates with vanilla JavaScript.
+- API endpoints that future apps can reuse.
 
-This keeps setup simple on Windows and Linux while still discouraging proxy attendance.
+## Web And API Design
 
-## Deployment Mapping
+Django templates provide the browser UI. Vanilla JavaScript communicates with Django API endpoints using `fetch`.
 
-See [docs/deployment-mapping.md](docs/deployment-mapping.md) for the full build, test, and LAN deployment roadmap.
+Admin and trainer pages are intentionally separate:
 
-## Development Browser Testing
+- Admin system: `/app/`
+- Trainer terminal: `/trainer/clock/`
+- Public entry: `/`
 
-During development, both Flutter apps should be tested in a computer web browser before packaging desktop/mobile builds.
+Current API endpoints include:
 
-Desktop attendance app:
+- Health check: `/api/health/`
+- LAN/network info: `/api/network/`
+- Institution setup: `/api/institution-setup/current/`
+- Institutions API: `/api/institutions/`
+- Units API: `/api/units/`
+- Trainers API: `/api/trainers/`
+- Trainer face verification: `/api/trainers/verify-face/`
+- Attendance sessions API: `/api/attendance-sessions/`
 
-```powershell
-cd frontend\desktop_attendance
-flutter run -d chrome --web-port 5100
-```
+Report downloads:
 
-Mobile registration app:
+- Attendance Excel: `/app/reports/export/attendance/`
+- Trainer Summary Excel: `/app/reports/export/trainers/`
+- Unit Summary Excel: `/app/reports/export/units/`
 
-```powershell
-cd frontend\mobile_registration
-flutter run -d chrome --web-port 5200
-```
-
-Final distribution builds should happen after the browser-tested flows are complete.
-
-## Desktop App Scope
-
-The desktop app is the main operating app for the school.
-
-It will include:
-
-- Trainer clock-in and clock-out.
-- Mandatory live camera preview and audit snapshot capture during clock-in and clock-out.
-- Admin login.
-- Admin dashboard.
-- Institution setup: school name, logo, contact details, and policies.
-- Trainer management.
-- Unit management.
-- Trainer-unit assignment.
-- Active classes.
-- Attendance history.
-- Reports.
-- Excel report downloads.
-
-The mobile app is focused on trainer registration and profile/photo capture.
+Future mobile or desktop apps should use these same endpoints instead of creating separate backend logic.
 
 ## LAN Hosting Setup
 
 The system is designed to run inside a school LAN.
 
-The Django backend will run on one host computer or school server. The school network admin should assign that backend host a static LAN IP address, for example:
+The Django backend/web system runs on one host computer or school server. The school network admin should assign that host a static LAN IP address, for example:
 
 ```text
 192.168.1.50
 ```
 
-The backend can then be accessed by other computers on the LAN using a URL like:
+The web system can then be opened from other computers on the LAN:
 
 ```text
 http://192.168.1.50:8000
 ```
-
-The superadmin will set this backend URL in the system/frontend configuration. The desktop app must store this URL locally so it knows where to send API requests.
 
 The backend automatically allows access through:
 
 - `localhost`
 - `127.0.0.1`
 - the backend computer hostname
-- the backend computer detected LAN IP addresses
+- detected LAN IP addresses
 
-This lets the school admin open the backend dashboard and setup pages from the backend machine or from another computer on the school network. If needed, extra hostnames/IPs can still be added with the `DJANGO_ALLOWED_HOSTS` environment variable.
+If needed, extra hostnames/IPs can be added with the `DJANGO_ALLOWED_HOSTS` environment variable.
 
-## Backend Monitor Dashboard
+## Backend Monitor
 
-The backend includes a small monitor dashboard:
-
-```text
-http://127.0.0.1:8000/
-```
-
-On the backend host machine, this dashboard shows:
+The backend monitor page shows:
 
 - backend online status
 - institution count
@@ -112,90 +99,76 @@ On the backend host machine, this dashboard shows:
 - unit count
 - active class count
 - detected LAN IP addresses
-- backend URLs that the frontend apps can use
+- backend URLs for future frontend clients
 
-The same network information is available as JSON:
+Open:
+
+```text
+http://127.0.0.1:8000/app/system/monitor/
+```
+
+JSON network data:
 
 ```text
 http://127.0.0.1:8000/api/network/
 ```
 
-## Backend IP Change Handling
+## Development Setup
 
-If the backend host receives a new LAN IP, the system should not require reinstalling the frontend app.
-
-The desktop app must include a backend server settings screen where an authorized frontend admin can:
-
-- View the current backend URL.
-- Enter a new backend URL.
-- Test connection to the new URL.
-- Save the new URL locally.
-- See online/offline connection status.
-
-Recommended local frontend setting:
-
-```json
-{
-  "backend_base_url": "http://192.168.1.50:8000"
-}
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver 0.0.0.0:8000
 ```
 
-When the school network admin changes the backend host IP, they should send the new IP to the admin handling the desktop frontend. That admin updates the backend URL in the desktop app, tests the connection, and saves it.
+Then open:
 
-## Smooth Project Execution Steps
+```text
+http://127.0.0.1:8000/app/
+```
 
-1. Prepare development tools.
-   - Install real Python, Django dependencies, Flutter, and Git.
-   - Confirm backend and Flutter apps can run.
+## Camera Access On LAN
 
-2. Complete backend foundation.
-   - Run migrations.
-   - Create superadmin.
-   - Confirm Django admin works.
-   - Confirm API endpoints respond.
+Trainer face verification and clock-in/clock-out audit photos require browser camera access.
 
-3. Build institution setup.
-   - Add school profile, logo, and contact details.
-   - Add default class duration and clock-out allowance.
-   - Verify settings appear in the desktop app.
+Modern browsers allow camera capture only from a secure context:
 
-4. Build LAN server configuration.
-   - Add backend URL setup screen to desktop app.
-   - Add connection test.
-   - Store selected backend URL locally.
-   - Verify app can reconnect after URL change.
+- `http://localhost:8000` or `http://127.0.0.1:8000` on the backend computer.
+- HTTPS URLs on other LAN computers, for example `https://192.168.1.50`.
 
-5. Build admin dashboard in desktop app.
-   - Trainers, units, assignments, active classes, attendance history, and reports.
-   - Verify each admin action saves to backend.
+If a trainer opens `http://192.168.1.50:8000/trainer/clock/` from another computer, the browser may block the camera as "not secure". For school-wide LAN use, configure HTTPS for the Django host or place Django behind an HTTPS reverse proxy on the assigned static IP.
 
-6. Build trainer attendance flow.
-   - Trainer ID + PIN.
-   - Active session detection.
-   - Unit selection.
-   - Right-side unit stats card.
-   - Clock-out with actual and credited minutes.
+Trainer login flow:
 
-7. Build mobile registration.
-   - Trainer details.
-   - Photo capture.
-   - PIN setup/reset.
-   - Unit assignment.
+1. Enter trainer ID number.
+2. Click Next to open the camera preview.
+3. Verify face against the registered reference photo.
+4. Open the trainer dashboard to clock in or clock out.
 
-8. Build Excel reporting.
-   - Trainer reports.
-   - Unit reports.
-   - Date range reports.
-   - Payment-focused summaries.
-   - Verify exported files open correctly in Excel.
+## Optional DeepFace Install
 
-9. Test LAN deployment.
-   - Assign backend static IP.
-   - Open firewall port.
-   - Connect desktop app from another LAN computer.
-   - Record attendance and download reports.
+The system can use DeepFace for stronger trainer face verification when it is installed. DeepFace downloads TensorFlow, which is a large Windows package and may fail on slow connections.
 
-10. Finalize backup and recovery.
-    - Backup database.
-    - Backup uploaded logos/photos.
-    - Document restore steps.
+Base setup works without DeepFace by using a lightweight local photo verifier. To enable DeepFace later:
+
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+pip install --default-timeout 1000 --retries 10 -r requirements-ml.txt
+```
+
+If DeepFace is installed successfully, the trainer verification API will use it automatically. If it is not installed, the API falls back to the lightweight verifier instead of blocking clock-in/out.
+
+## Future App Room
+
+Desktop and mobile apps may be added later if needed.
+
+When that happens:
+
+- Keep Django as the source of truth.
+- Reuse existing API endpoints.
+- Do not duplicate attendance/business rules in the app.
+- Keep the web system fully functional even if apps are added.

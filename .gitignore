@@ -12,12 +12,6 @@ staticfiles/
 # Django
 local_settings.py
 
-# Flutter / Dart
-.dart_tool/
-.packages
-.pub-cache/
-build/
-
 # IDE
 .idea/
 .vscode/

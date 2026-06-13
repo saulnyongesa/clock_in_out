@@ -1,0 +1,149 @@
+{% extends "web/base.html" %}
+
+{% block title %}Reports - Clock In Out{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Reports</h2>
+    <p class="muted">Review teaching hours and download Excel reports.</p>
+  </div>
+</div>
+
+<section class="panel">
+  <form method="get" class="form-grid">
+    <div>
+      <label for="start_date">From</label>
+      <input id="start_date" name="start_date" type="date" value="{{ filters.start_date }}">
+    </div>
+    <div>
+      <label for="end_date">To</label>
+      <input id="end_date" name="end_date" type="date" value="{{ filters.end_date }}">
+    </div>
+    <div>
+      <label for="trainer">Trainer</label>
+      <select id="trainer" name="trainer">
+        <option value="">All trainers</option>
+        {% for trainer in trainers %}
+          <option value="{{ trainer.id }}" {% if filters.trainer == trainer.id|stringformat:"s" %}selected{% endif %}>
+            {{ trainer.name }} ({{ trainer.id_number }})
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="unit">Unit</label>
+      <select id="unit" name="unit">
+        <option value="">All units</option>
+        {% for unit in units %}
+          <option value="{{ unit.id }}" {% if filters.unit == unit.id|stringformat:"s" %}selected{% endif %}>
+            {{ unit.code }} - {{ unit.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <button type="submit">Apply Filters</button>
+      <a class="button secondary" href="{% url 'reports-page' %}">Reset</a>
+    </div>
+  </form>
+</section>
+
+<section class="panel" style="margin-top: 18px;">
+  <h3>Excel Downloads</h3>
+  <p class="muted">Downloads use the filters above.</p>
+  <a class="button" href="{% url 'export-attendance-report' %}?{{ request.GET.urlencode }}">Attendance Excel</a>
+  <a class="button" href="{% url 'export-trainer-summary' %}?{{ request.GET.urlencode }}">Trainer Summary Excel</a>
+  <a class="button" href="{% url 'export-unit-summary' %}?{{ request.GET.urlencode }}">Unit Summary Excel</a>
+</section>
+
+<section class="grid" style="margin-top: 18px;">
+  <div class="panel">
+    <h3>Trainer Summary</h3>
+    {% if trainer_summary %}
+      <table>
+        <thead>
+          <tr>
+            <th>Trainer</th>
+            <th>Sessions</th>
+            <th>Actual</th>
+            <th>Credited</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in trainer_summary %}
+            <tr>
+              <td>{{ row.trainer__name }}</td>
+              <td>{{ row.session_count }}</td>
+              <td>{{ row.actual_minutes_total|default:0 }} min</td>
+              <td>{{ row.credited_minutes_total|default:0 }} min</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">No trainer summary for this filter.</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h3>Unit Summary</h3>
+    {% if unit_summary %}
+      <table>
+        <thead>
+          <tr>
+            <th>Unit</th>
+            <th>Actual</th>
+            <th>Credited</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in unit_summary %}
+            <tr>
+              <td>{{ row.unit__code }}</td>
+              <td>{{ row.actual_minutes_total|default:0 }} min</td>
+              <td>{{ row.credited_minutes_total|default:0 }} min</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">No unit summary for this filter.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="panel" style="margin-top: 18px;">
+  <h3>Attendance Records</h3>
+  {% if sessions %}
+    <table>
+      <thead>
+        <tr>
+          <th>Trainer</th>
+          <th>Unit</th>
+          <th>Clock In</th>
+          <th>Clock Out</th>
+          <th>Actual</th>
+          <th>Credited</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for session in sessions %}
+          <tr>
+            <td>{{ session.trainer.name }}</td>
+            <td>{{ session.unit.code }} - {{ session.unit.name }}</td>
+            <td>{{ session.clock_in_at }}</td>
+            <td>{{ session.clock_out_at|default:"Active" }}</td>
+            <td>{{ session.actual_minutes|default:"-" }}</td>
+            <td>{{ session.credited_minutes|default:"-" }}</td>
+            <td>{% if session.is_active %}Active{% else %}Closed{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No attendance records for this filter.</p>
+  {% endif %}
+</section>
+{% endblock %}

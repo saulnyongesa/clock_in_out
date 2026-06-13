@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clock In Out</title>
+  <style>
+    :root {
+      --bg: #f5f8f7;
+      --panel: #ffffff;
+      --ink: #14211d;
+      --muted: #62736d;
+      --line: #dce6e1;
+      --accent: #0e7a5f;
+      --soft: #e9f3ef;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+    main {
+      min-height: 100vh;
+      display: grid;
+      align-items: center;
+      padding: 22px;
+    }
+    .wrap {
+      width: min(1080px, 100%);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+    .hero {
+      background: #13231e;
+      color: white;
+      border-radius: 8px;
+      padding: clamp(28px, 6vw, 58px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 430px;
+    }
+    .brand { font-weight: 900; font-size: 20px; }
+    h1 {
+      margin: 42px 0 12px;
+      font-size: clamp(38px, 6vw, 70px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+    p { margin: 0; color: #c9ddd6; font-size: 18px; line-height: 1.55; }
+    .actions {
+      display: grid;
+      gap: 14px;
+    }
+    .action-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+      text-decoration: none;
+      color: inherit;
+      display: grid;
+      gap: 10px;
+      min-height: 150px;
+      align-content: center;
+    }
+    .action-card strong { font-size: 24px; }
+    .action-card span { color: var(--muted); line-height: 1.45; }
+    .action-card.primary {
+      border-color: #bdd8ce;
+      background: var(--soft);
+    }
+    .pill {
+      width: fit-content;
+      background: var(--accent);
+      color: white;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-weight: 800;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    @media (max-width: 820px) {
+      main { align-items: start; }
+      .wrap { grid-template-columns: 1fr; }
+      .hero { min-height: 320px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="wrap">
+      <section class="hero">
+        <div class="brand">Clock In Out</div>
+        <div>
+          <h1>Teaching attendance</h1>
+          <p>Trainer attendance, class hours, camera audit snapshots, and Excel reports for the school LAN.</p>
+        </div>
+      </section>
+      <section class="actions" aria-label="System entry points">
+        <a class="action-card primary" href="{% url 'clock-page' %}">
+          <span class="pill">Trainer</span>
+          <strong>Clock In / Clock Out</strong>
+          <span>Enter trainer ID, verify face, then manage the active class session.</span>
+        </a>
+        <a class="action-card" href="{% url 'web-dashboard' %}">
+          <span class="pill">Admin</span>
+          <strong>Open Dashboard</strong>
+          <span>Manage school setup, trainers, units, assignments, reports, and system health.</span>
+        </a>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

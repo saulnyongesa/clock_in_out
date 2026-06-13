@@ -1,0 +1,37 @@
+{% extends "web/base.html" %}
+
+{% block title %}Active Classes - Clock In Out{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Active Classes</h2>
+    <p class="muted">Classes currently clocked in.</p>
+  </div>
+</div>
+
+<section class="panel">
+  {% if active_sessions %}
+    <table>
+      <thead>
+        <tr>
+          <th>Trainer</th>
+          <th>Unit</th>
+          <th>Clock In</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for session in active_sessions %}
+          <tr>
+            <td>{{ session.trainer.name }}</td>
+            <td>{{ session.unit.code }} - {{ session.unit.name }}</td>
+            <td>{{ session.clock_in_at }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No active classes.</p>
+  {% endif %}
+</section>
+{% endblock %}

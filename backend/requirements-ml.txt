@@ -1,0 +1,3 @@
+# Optional stronger face verification.
+# This downloads TensorFlow, which is large on Windows. Install on a stable/fast connection.
+deepface>=0.0.93,<0.1.0

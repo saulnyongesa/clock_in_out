@@ -2,61 +2,51 @@
 
 ## Goal
 
-Build a modern trainer attendance system for institutions that pay trainers based on teaching hours.
+Build a web-based trainer attendance system for schools that pay trainers based on teaching hours.
 
 ## Main Roles
 
-- Admin: configures institution details, trainers, units, policies, and reports.
+- Superadmin/Admin: configures school details, trainers, units, policies, and reports.
 - Trainer: clocks in and out for assigned units.
 
-## Admin Setup
+## Web Admin Setup
 
-Admin should be able to configure:
+Admin can configure:
 
 - School/institution name.
 - Logo.
 - Location/address.
 - Email and phone.
 - Clock-out allowance minutes.
+- Default class duration.
 - Academic terms.
 - Units and expected teaching hours.
 - Trainers and assigned units.
 
-## Trainer Desktop Flow
+## Trainer Browser Flow
 
-1. Trainer enters ID number.
-2. Trainer enters PIN/passcode.
-3. App checks whether trainer has an active class.
-4. If already clocked in, go directly to active unit screen.
-5. Show unit stats card and clock-out button.
-6. If not clocked in, trainer selects unit to teach.
-7. App shows a small live camera preview and captures a clock-in audit snapshot.
-8. App starts attendance session.
-9. Right-side stats card shows:
-   - unit name/code
-   - expected weekly hours
-   - expected term hours
-   - completed hours
-   - remaining hours
-   - progress percentage
-10. On clock-out, app again shows the live camera preview and captures a clock-out audit snapshot.
-11. Backend records taught minutes.
-12. If configured allowance applies, backend can round to full expected class duration.
+1. Trainer opens `/trainer/clock/`, which is separate from the admin dashboard.
+2. Trainer enters ID number.
+3. Browser shows a small live camera preview.
+4. System captures mandatory clock-in snapshot.
+5. Backend uses the ID number to load that trainer only, then DeepFace verifies the live snapshot against the registered trainer photo.
+6. Trainer selects assigned unit.
+7. Backend records clock-in.
+8. Unit stats show expected hours, completed hours, remaining hours, and progress.
+9. If trainer already has an active class, system goes directly to active session.
+10. Trainer clocks out with mandatory camera preview and DeepFace verification.
+11. Backend records actual minutes and credited minutes.
+12. If allowance applies, credited minutes can round up to expected class duration.
 
-## Trainer Mobile Registration Flow
+## Identity Model
 
-1. Admin or authorized staff opens registration app.
-2. Capture trainer details.
-3. Capture trainer photo for profile/audit, not face matching.
-4. Set or reset trainer PIN.
-5. Assign trainer to one or more units.
+- Trainer ID filters the lookup to one trainer.
+- DeepFace verifies the live snapshot against the registered trainer photo.
+- Mandatory camera snapshots discourage proxy attendance.
+- Admin can review snapshots in reports/history.
 
-## Simpler Identity Model
+## Future Apps
 
-The system will not use face recognition.
+Mobile or desktop apps can be added later.
 
-Instead:
-
-- Trainer ID + PIN verifies the trainer.
-- Device must show a small live camera preview and capture an audit snapshot during clock-in and clock-out.
-- Admin can review suspicious entries from reports.
+They must use the same Django API endpoints and keep Django as the source of truth.

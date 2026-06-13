@@ -1,5 +1,6 @@
 from django.db.models import Sum
 from rest_framework import decorators, response, serializers, status, viewsets
+from rest_framework.permissions import AllowAny
 
 from academics.models import Unit
 from attendance.models import AttendanceSession
@@ -36,6 +37,7 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
 class AttendanceSessionViewSet(viewsets.ModelViewSet):
     queryset = AttendanceSession.objects.select_related("institution", "trainer", "unit").all()
     serializer_class = AttendanceSessionSerializer
+    permission_classes = [AllowAny]
 
     @decorators.action(detail=False, methods=["get"], url_path="active-for-trainer/(?P<trainer_id>[^/.]+)")
     def active_for_trainer(self, request, trainer_id=None):

@@ -1,4 +1,3 @@
-from django.contrib.auth.hashers import check_password, make_password
 from django.db import models
 
 from academics.models import Unit
@@ -12,7 +11,6 @@ class Trainer(models.Model):
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=30, blank=True)
     photo = models.ImageField(upload_to="trainer_photos/", blank=True, null=True)
-    pin_hash = models.CharField(max_length=128)
     is_active = models.BooleanField(default=True)
     units = models.ManyToManyField(Unit, through="TrainerUnit", related_name="trainers")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -20,12 +18,6 @@ class Trainer(models.Model):
 
     class Meta:
         ordering = ["name"]
-
-    def set_pin(self, raw_pin):
-        self.pin_hash = make_password(raw_pin)
-
-    def check_pin(self, raw_pin):
-        return check_password(raw_pin, self.pin_hash)
 
     def save(self, *args, **kwargs):
         self.name = self.name.upper().strip()

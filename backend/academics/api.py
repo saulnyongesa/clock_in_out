@@ -1,4 +1,4 @@
-from rest_framework import serializers, viewsets
+from rest_framework import permissions, serializers, viewsets
 
 from academics.models import Unit
 
@@ -21,3 +21,4 @@ class UnitSerializer(serializers.ModelSerializer):
 class UnitViewSet(viewsets.ModelViewSet):
     queryset = Unit.objects.select_related("institution").all()
     serializer_class = UnitSerializer
+    permission_classes = [permissions.AllowAny]

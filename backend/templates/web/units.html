@@ -1,0 +1,215 @@
+{% extends "web/base.html" %}
+
+{% block title %}Units - Clock In Out{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Units</h2>
+    <p class="muted">Manage teaching units, class length, and expected hours.</p>
+  </div>
+  <div class="button-row">
+    <button type="button" id="open-unit-modal">Add Unit</button>
+  </div>
+</div>
+
+<section class="panel">
+  <h3>Units</h3>
+  <div id="unit-list" class="table-wrap">Loading units...</div>
+</section>
+
+<div class="modal-backdrop" id="unit-modal" role="dialog" aria-modal="true" aria-labelledby="unit-modal-title">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="unit-modal-title">Add Unit</h3>
+      <button class="modal-close" type="button" data-close-unit-modal>Close</button>
+    </div>
+    <div class="modal-body">
+      <form id="unit-form">
+        <input id="unit-record-id" type="hidden">
+        <div class="form-grid">
+          <div>
+            <label for="code">Unit Code</label>
+            <input id="code" required>
+          </div>
+          <div>
+            <label for="name">Unit Name</label>
+            <input id="name" required>
+          </div>
+          <div>
+            <label for="class_minutes">Class Minutes</label>
+            <input id="class_minutes" type="number" min="1" value="60" required>
+          </div>
+          <div>
+            <label for="weekly_hours_target">Weekly Hours Target</label>
+            <input id="weekly_hours_target" type="number" step="0.25" min="0" required>
+          </div>
+          <div>
+            <label for="term_hours_target">Term Hours Target</label>
+            <input id="term_hours_target" type="number" step="0.25" min="0" required>
+          </div>
+          <div>
+            <label for="is_active">Status</label>
+            <select id="is_active">
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          </div>
+        </div>
+        <div class="button-row" style="margin-top:18px;">
+          <button type="submit">Save Unit</button>
+          <button class="secondary" type="button" data-close-unit-modal>Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const unitForm = document.querySelector("#unit-form");
+  const unitList = document.querySelector("#unit-list");
+  const unitModal = document.querySelector("#unit-modal");
+  const unitModalTitle = document.querySelector("#unit-modal-title");
+  const unitRecordId = document.querySelector("#unit-record-id");
+  const unitFields = {
+    code: document.querySelector("#code"),
+    name: document.querySelector("#name"),
+    class_minutes: document.querySelector("#class_minutes"),
+    weekly_hours_target: document.querySelector("#weekly_hours_target"),
+    term_hours_target: document.querySelector("#term_hours_target"),
+    is_active: document.querySelector("#is_active"),
+  };
+  let currentInstitution = null;
+  let unitsCache = [];
+
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[char]));
+  }
+
+  function openUnitModal(unit = null) {
+    unitForm.reset();
+    unitRecordId.value = unit?.id || "";
+    unitModalTitle.textContent = unit ? "Edit Unit" : "Add Unit";
+    unitFields.code.value = unit?.code || "";
+    unitFields.name.value = unit?.name || "";
+    unitFields.class_minutes.value = unit?.class_minutes || "60";
+    unitFields.weekly_hours_target.value = unit?.weekly_hours_target || "0";
+    unitFields.term_hours_target.value = unit?.term_hours_target || "0";
+    unitFields.is_active.value = String(unit?.is_active ?? true);
+    unitModal.classList.add("open");
+  }
+
+  function closeUnitModal() {
+    unitModal.classList.remove("open");
+  }
+
+  async function loadInstitution() {
+    const response = await fetch("/api/institution-setup/current/");
+    currentInstitution = await response.json();
+    if (!currentInstitution.id) {
+      window.showAppModal("Setup Required", "Complete School Setup before adding units.", "warning");
+    }
+  }
+
+  async function loadUnits() {
+    const response = await fetch("/api/units/");
+    unitsCache = await response.json();
+    if (!unitsCache.length) {
+      unitList.innerHTML = "<p class='muted'>No units created yet.</p>";
+      return;
+    }
+    unitList.innerHTML = `
+      <table>
+        <thead><tr><th>Code</th><th>Name</th><th>Class</th><th>Week Target</th><th>Term Target</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${unitsCache.map((unit) => `
+            <tr>
+              <td>${escapeHtml(unit.code)}</td>
+              <td>${escapeHtml(unit.name)}</td>
+              <td>${unit.class_minutes} min</td>
+              <td>${unit.weekly_hours_target} hrs</td>
+              <td>${unit.term_hours_target} hrs</td>
+              <td>${unit.is_active ? "Active" : "Inactive"}</td>
+              <td>
+                <div class="row-actions">
+                  <button class="secondary" type="button" data-edit-unit="${unit.id}">Edit</button>
+                  <button class="danger" type="button" data-delete-unit="${unit.id}">Delete</button>
+                </div>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  async function saveUnit(event) {
+    event.preventDefault();
+    if (!currentInstitution?.id) {
+      window.showAppModal("Setup Required", "Complete School Setup first.", "warning");
+      return;
+    }
+    const id = unitRecordId.value;
+    const payload = {
+      institution: currentInstitution.id,
+      code: unitFields.code.value.trim(),
+      name: unitFields.name.value.trim(),
+      class_minutes: Number(unitFields.class_minutes.value || 60),
+      weekly_hours_target: unitFields.weekly_hours_target.value || "0",
+      term_hours_target: unitFields.term_hours_target.value || "0",
+      is_active: unitFields.is_active.value === "true",
+    };
+    const response = await fetch(id ? `/api/units/${id}/` : "/api/units/", {
+      method: id ? "PATCH" : "POST",
+      headers: window.csrfHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      window.showAppModal("Could Not Save", "Check the unit details and duplicate unit codes.", "error");
+      return;
+    }
+    closeUnitModal();
+    window.showAppModal("Unit Saved", "The unit record has been updated successfully.", "success");
+    loadUnits();
+  }
+
+  async function deleteUnit(id) {
+    if (!confirm("Delete this unit record?")) return;
+    const response = await fetch(`/api/units/${id}/`, {
+      method: "DELETE",
+      headers: window.csrfHeaders(),
+    });
+    if (!response.ok) {
+      window.showAppModal("Could Not Delete", "The unit could not be deleted. It may already be used by attendance records.", "error");
+      return;
+    }
+    window.showAppModal("Unit Deleted", "The unit record has been removed.", "success");
+    loadUnits();
+  }
+
+  document.querySelector("#open-unit-modal").addEventListener("click", () => openUnitModal());
+  document.querySelectorAll("[data-close-unit-modal]").forEach((button) => {
+    button.addEventListener("click", closeUnitModal);
+  });
+  unitModal.addEventListener("click", (event) => {
+    if (event.target === unitModal) closeUnitModal();
+  });
+  unitForm.addEventListener("submit", saveUnit);
+  unitList.addEventListener("click", (event) => {
+    const editId = event.target.dataset.editUnit;
+    const deleteId = event.target.dataset.deleteUnit;
+    if (editId) openUnitModal(unitsCache.find((unit) => unit.id === Number(editId)));
+    if (deleteId) deleteUnit(deleteId);
+  });
+
+  loadInstitution().then(loadUnits);
+</script>
+{% endblock %}

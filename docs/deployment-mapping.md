@@ -1,229 +1,157 @@
 # Deployment Mapping
 
-This document maps the steps for building, testing, and deploying the Clock In Out system smoothly.
-
-## Target Deployment
-
-The system is designed for a school LAN.
-
-- Django backend runs on one host computer or school server.
-- The network admin assigns a static LAN IP to the backend host.
-- Flutter desktop apps connect to that LAN IP.
-- The superadmin sets the backend server IP inside the system configuration.
-- If the backend host receives a new IP, the frontend admin updates the frontend server address so apps communicate with the backend again.
-
-Example backend URL:
-
-```text
-http://192.168.1.50:8000
-```
+This roadmap is now web-first. The complete system runs in Django and is accessed through a browser on the school LAN.
 
 ## Phase 1: Foundation
 
-Goal: Make the project runnable end to end.
+Goal: Make Django runnable and reachable.
 
 Steps:
 
-1. Install real Python and Flutter on the development machine.
-2. Create and activate the backend virtual environment.
-3. Install backend requirements.
-4. Run Django migrations.
-5. Create Django superuser.
-6. Start backend server.
-7. Start Flutter desktop app.
-8. Confirm the desktop app can reach the backend health/API endpoint.
+1. Install Python.
+2. Create/activate virtual environment.
+3. Install requirements.
+4. Run migrations.
+5. Create superuser.
+6. Start Django with `0.0.0.0:8000`.
+7. Open backend monitor.
+8. Confirm health endpoint and network endpoint work.
 
 Working check:
 
-- Backend opens in browser.
-- Django admin opens.
-- Flutter app launches.
-- Flutter app shows backend connection status.
-- Backend monitor opens and shows usable LAN backend URLs.
+- `/api/health/` returns `200`.
+- `/api/network/` returns LAN URLs.
+- `/` monitor page opens.
+- `/admin/` opens.
 
-## Phase 2: Institution Setup
+## Phase 2: Web System Setup
 
-Goal: Allow system branding and school policies to be configured.
+Goal: Configure school identity and policies from the browser.
 
 Steps:
 
-1. Build institution profile screen in desktop admin dashboard.
-2. Add school name, logo, phone, email, address, and default class duration.
-3. Add clock-out allowance minutes.
-4. Save settings to Django backend.
-5. Display school logo/name in desktop app header.
-6. Verify the setup screen in Flutter web before packaging the desktop app.
+1. Build `/app/setup/`.
+2. Load current institution setup through `/api/institution-setup/current/`.
+3. Save school name, email, phone, address, default class minutes, and clock-out allowance.
+4. Show detected LAN URLs on setup page.
+5. Add logo upload support.
+6. Display school branding across web pages.
+7. Keep trainer clocking separate at `/trainer/clock/`.
 
 Working check:
 
-- Superadmin can update school details.
-- Logo appears on the desktop app.
-- Clock-out allowance is saved and used by attendance logic.
+- Setup page loads existing data.
+- Admin can save changes.
+- Saved values are returned by API.
+- LAN URLs are visible.
+- Trainer clock page is not inside the admin dashboard shell.
 
-## Phase 3: Network/IP Configuration
+## Phase 3: Web Admin Dashboard
 
-Goal: Make LAN deployment reliable even if the backend IP changes.
+Goal: Manage the full system from browser pages.
 
 Steps:
 
-1. Add backend server URL setting in the desktop app.
-2. Store the backend URL locally on the desktop machine.
-3. Add a connection test button.
-4. Add clear online/offline status in the app.
-5. Allow frontend admin to update the backend URL when the LAN IP changes.
-6. Keep last working IP visible for troubleshooting.
+1. Build dashboard summary.
+2. Add trainer management pages.
+3. Add unit management pages.
+4. Add trainer-unit assignment pages.
+5. Add active classes page.
+6. Add attendance history page.
+7. Keep Django admin available for superadmin fallback.
 
 Working check:
 
-- Desktop app can switch from one backend URL to another.
-- Invalid IP shows a clear connection error.
-- Valid IP reconnects without reinstalling the app.
+- Admin can manage trainers and units without using Flutter/mobile apps.
+- All pages use Django templates and vanilla JS.
+- Trainer-unit assignment works from `/app/assignments/`.
 
-## Phase 4: Admin Dashboard In Desktop App
+## Phase 4: Trainer Clock-In/Clock-Out
 
-Goal: Move system management into the desktop application.
-
-Steps:
-
-1. Add admin login.
-2. Add dashboard summary: trainers, units, active classes, today hours.
-3. Add institution setup screen.
-4. Add trainer management screen.
-5. Add unit management screen.
-6. Add trainer-unit assignment screen.
-7. Add attendance history screen.
-8. Add active classes screen with admin force clock-out.
-9. Add reports screen.
-10. Add Excel report download/export.
-
-Working check:
-
-- Admin can manage all core data from the desktop app.
-- Reports download as Excel files.
-- Admin actions update backend data immediately.
-
-## Phase 5: Trainer Attendance Flow
-
-Goal: Make daily clock-in/out fast and reliable.
+Goal: Complete the daily trainer workflow in the browser.
 
 Steps:
 
 1. Trainer enters ID number.
-2. Trainer enters PIN.
-3. Backend verifies trainer.
-4. App checks active session.
-5. If active session exists, open active unit screen.
-6. If no active session exists, show assigned units.
-7. Trainer selects unit.
-8. App shows the live camera preview and captures a mandatory clock-in snapshot.
-9. Backend records clock-in.
-10. App shows right-side unit stats card.
-11. Trainer clocks out.
-12. App shows the live camera preview and captures a mandatory clock-out snapshot.
-13. Backend records actual and credited minutes.
+2. Browser opens camera preview.
+3. Clock-in snapshot is mandatory.
+4. Backend uses DeepFace to verify the snapshot against the registered photo for that ID number.
+5. Trainer selects assigned unit.
+6. Backend records clock-in.
+7. Active session page shows unit stats.
+8. Clock-out snapshot and DeepFace verification are mandatory.
+9. Backend records actual and credited minutes.
 
 Working check:
 
+- Trainer cannot clock in without snapshot.
 - Trainer cannot clock into two classes at once.
-- Trainer cannot clock in or clock out without the camera preview and audit snapshot.
-- Active trainer returns directly to clock-out screen.
-- Unit stats are correct after clock-in and clock-out.
-- Grace allowance credits the expected minutes when applicable.
+- Active trainer goes directly to active session screen.
+- Grace allowance works.
 
-## Phase 6: Mobile Registration
+## Phase 5: Reports
 
-Goal: Register trainers from mobile devices.
+Goal: Produce Excel-ready admin reports.
 
 Steps:
 
-1. Add admin login to mobile app.
-2. Add trainer profile form.
-3. Add profile photo capture.
-4. Add PIN setup/reset.
-5. Add unit assignment.
-6. Submit trainer data to backend.
-
-Working check:
-
-- Trainer created from mobile appears in desktop admin dashboard.
-- Trainer can immediately clock in from desktop terminal.
-
-## Phase 7: Reports
-
-Goal: Produce usable payment and monitoring reports.
-
-Steps:
-
-1. Add trainer attendance report.
-2. Add unit report.
-3. Add term report.
-4. Add date range filters.
-5. Add active/incomplete sessions report.
-6. Add Excel export endpoints in Django.
-7. Add Excel download buttons in desktop admin dashboard.
+1. Trainer attendance report.
+2. Unit report.
+3. Trainer summary report.
+4. Payment-focused summary using credited minutes.
+5. Date range filters.
+6. Excel export endpoints.
+7. Browser download buttons.
 
 Working check:
 
 - Excel files open correctly.
-- Report totals match database attendance sessions.
-- Actual minutes and credited minutes are both visible.
+- Actual and credited minutes are visible.
+- Totals match attendance records.
 
-## Phase 8: LAN Deployment
+## Phase 6: LAN Deployment
 
-Goal: Install the system at a school.
+Goal: Install at a school.
 
 Steps:
 
-1. Choose backend host computer/server.
+1. Choose backend host/server.
 2. Network admin assigns static LAN IP.
-3. Install backend dependencies.
-4. Configure `.env` on backend.
-5. Run migrations and create superadmin.
-6. Start backend service.
-7. Open firewall port for backend.
-8. Install desktop app on attendance/admin machines.
-9. Superadmin or frontend admin sets backend URL in desktop app.
-10. Test trainer login, clock-in, clock-out, and report export.
+3. Configure firewall for port `8000`.
+4. Start Django service.
+5. Open monitor page on LAN IP.
+6. Complete setup from browser.
+7. Test clock-in/out from another LAN computer.
 
 Working check:
 
-- Other LAN computers can open backend URL.
-- Desktop app connects using assigned IP.
-- Admin dashboard works.
+- `http://LAN-IP:8000/` opens from another computer.
+- Setup page saves.
 - Attendance records save.
-- Excel reports download.
+- Reports download.
 
-## Phase 9: Backup And Recovery
+## Phase 7: Backup And Recovery
 
 Goal: Protect school attendance data.
 
 Steps:
 
-1. Add database backup command.
-2. Add media backup for logos and trainer photos.
+1. Back up database.
+2. Back up uploaded media.
 3. Document restore steps.
 4. Schedule regular backups.
 
 Working check:
 
 - Backup file is created.
-- Restore test works on another machine.
+- Restore test works.
 
-## Phase 10: Final Acceptance
+## Future Phase: Optional Apps
 
-Goal: Confirm the system is ready for real use.
+Desktop/mobile apps may be built later.
 
-Checklist:
+Rules:
 
-- Institution details configured.
-- Backend IP configured in frontend.
-- Admin can manage trainers.
-- Admin can manage units.
-- Admin can assign units to trainers.
-- Trainer can clock in.
-- Trainer can clock out.
-- Grace allowance works.
-- Active sessions are visible.
-- Reports export to Excel.
-- Desktop app reconnects after backend IP change.
-- Backup process is documented.
+- Apps must use existing APIs.
+- Apps must not replace the web system.
+- Attendance rules remain in Django.

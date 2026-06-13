@@ -1,0 +1,160 @@
+{% extends "web/base.html" %}
+
+{% block title %}Assignments - Clock In Out{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Assignments</h2>
+    <p class="muted">Connect trainers to the units they are allowed to teach.</p>
+  </div>
+  <div class="button-row">
+    <button type="button" id="open-assignment-modal">Assign Unit</button>
+  </div>
+</div>
+
+<section class="panel">
+  <h3>Trainer Assignments</h3>
+  <div id="assignment-list" class="table-wrap">Loading assignments...</div>
+</section>
+
+<div class="modal-backdrop" id="assignment-modal" role="dialog" aria-modal="true" aria-labelledby="assignment-modal-title">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="assignment-modal-title">Assign Unit</h3>
+      <button class="modal-close" type="button" data-close-assignment-modal>Close</button>
+    </div>
+    <div class="modal-body">
+      <form id="assignment-form">
+        <div class="form-grid">
+          <div>
+            <label for="trainer">Trainer</label>
+            <select id="trainer" required></select>
+          </div>
+          <div>
+            <label for="unit">Unit</label>
+            <select id="unit" required></select>
+          </div>
+        </div>
+        <div class="button-row" style="margin-top:18px;">
+          <button type="submit">Assign Unit</button>
+          <button class="secondary" type="button" data-close-assignment-modal>Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const assignmentForm = document.querySelector("#assignment-form");
+  const trainerSelect = document.querySelector("#trainer");
+  const unitSelect = document.querySelector("#unit");
+  const assignmentList = document.querySelector("#assignment-list");
+  const assignmentModal = document.querySelector("#assignment-modal");
+  let trainers = [];
+  let units = [];
+
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[char]));
+  }
+
+  function openAssignmentModal() {
+    assignmentModal.classList.add("open");
+  }
+
+  function closeAssignmentModal() {
+    assignmentModal.classList.remove("open");
+  }
+
+  async function loadData() {
+    const [trainersResponse, unitsResponse] = await Promise.all([
+      fetch("/api/trainers/"),
+      fetch("/api/units/"),
+    ]);
+    trainers = await trainersResponse.json();
+    units = await unitsResponse.json();
+    trainerSelect.innerHTML = trainers.map((trainer) => `<option value="${trainer.id}">${escapeHtml(trainer.name)} (${escapeHtml(trainer.id_number)})</option>`).join("");
+    unitSelect.innerHTML = units.map((unit) => `<option value="${unit.id}">${escapeHtml(unit.code)} - ${escapeHtml(unit.name)}</option>`).join("");
+    renderAssignments();
+  }
+
+  function renderAssignments() {
+    if (!trainers.length) {
+      assignmentList.innerHTML = "<p class='muted'>No trainers found.</p>";
+      return;
+    }
+    assignmentList.innerHTML = `
+      <table>
+        <thead><tr><th>Trainer</th><th>Assigned Units</th></tr></thead>
+        <tbody>
+          ${trainers.map((trainer) => `
+            <tr>
+              <td>${escapeHtml(trainer.name)}<br><span class="muted">${escapeHtml(trainer.id_number)}</span></td>
+              <td>
+                ${trainer.assigned_units.length ? trainer.assigned_units.map((unit) => `
+                  <div class="row-actions" style="margin-bottom:8px;">
+                    <span>${escapeHtml(unit.unit_code)} - ${escapeHtml(unit.unit_name)}</span>
+                    <button class="danger" type="button" data-remove-trainer="${trainer.id}" data-remove-unit="${unit.unit}">Remove</button>
+                  </div>
+                `).join("") : "None"}
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  assignmentForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const response = await fetch(`/api/trainers/${trainerSelect.value}/assign-unit/`, {
+      method: "POST",
+      headers: window.csrfHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ unit: unitSelect.value }),
+    });
+    if (!response.ok) {
+      window.showAppModal("Could Not Assign", "The unit could not be assigned to this trainer.", "error");
+      return;
+    }
+    closeAssignmentModal();
+    window.showAppModal("Assignment Saved", "The trainer can now clock in for this unit.", "success");
+    loadData();
+  });
+
+  assignmentList.addEventListener("click", async (event) => {
+    const trainerId = event.target.dataset.removeTrainer;
+    const unitId = event.target.dataset.removeUnit;
+    if (!trainerId || !unitId) return;
+    if (!confirm("Remove this unit assignment?")) return;
+    const response = await fetch(`/api/trainers/${trainerId}/remove-unit/`, {
+      method: "POST",
+      headers: window.csrfHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ unit: unitId }),
+    });
+    if (!response.ok) {
+      window.showAppModal("Could Not Remove", "The assignment could not be removed.", "error");
+      return;
+    }
+    window.showAppModal("Assignment Removed", "The trainer assignment has been removed.", "success");
+    loadData();
+  });
+
+  document.querySelector("#open-assignment-modal").addEventListener("click", openAssignmentModal);
+  document.querySelectorAll("[data-close-assignment-modal]").forEach((button) => {
+    button.addEventListener("click", closeAssignmentModal);
+  });
+  assignmentModal.addEventListener("click", (event) => {
+    if (event.target === assignmentModal) closeAssignmentModal();
+  });
+
+  loadData();
+</script>
+{% endblock %}

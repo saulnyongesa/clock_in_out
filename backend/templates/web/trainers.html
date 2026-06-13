@@ -1,0 +1,229 @@
+{% extends "web/base.html" %}
+
+{% block title %}Trainers - Clock In Out{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Trainers</h2>
+    <p class="muted">Manage trainer records and reference photos used during face verification.</p>
+  </div>
+  <div class="button-row">
+    <button type="button" id="open-trainer-modal">Add Trainer</button>
+  </div>
+</div>
+
+<section class="panel">
+  <h3>Registered Trainers</h3>
+  <div id="trainer-list" class="table-wrap">Loading trainers...</div>
+</section>
+
+<div class="modal-backdrop" id="trainer-modal" role="dialog" aria-modal="true" aria-labelledby="trainer-modal-title">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="trainer-modal-title">Add Trainer</h3>
+      <button class="modal-close" type="button" data-close-trainer-modal>Close</button>
+    </div>
+    <div class="modal-body">
+      <form id="trainer-form">
+        <input id="trainer-record-id" type="hidden">
+        <div class="form-grid">
+          <div>
+            <label for="name">Full Name</label>
+            <input id="name" required>
+          </div>
+          <div>
+            <label for="id_number">ID Number</label>
+            <input id="id_number" required>
+          </div>
+          <div>
+            <label for="email">Email</label>
+            <input id="email" type="email">
+          </div>
+          <div>
+            <label for="phone">Phone</label>
+            <input id="phone">
+          </div>
+          <div>
+            <label for="photo">Reference Photo</label>
+            <input id="photo" type="file" accept="image/png,image/jpeg">
+            <div id="photo-preview" style="margin-top:10px;"></div>
+          </div>
+          <div>
+            <label for="is_active">Status</label>
+            <select id="is_active">
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          </div>
+        </div>
+        <p class="muted" style="margin:12px 0 0;">A reference photo is required when adding a new trainer. Leave it empty during edit to keep the current photo.</p>
+        <div class="button-row" style="margin-top:18px;">
+          <button type="submit">Save Trainer</button>
+          <button class="secondary" type="button" data-close-trainer-modal>Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const trainerForm = document.querySelector("#trainer-form");
+  const trainerList = document.querySelector("#trainer-list");
+  const trainerModal = document.querySelector("#trainer-modal");
+  const trainerModalTitle = document.querySelector("#trainer-modal-title");
+  const trainerRecordId = document.querySelector("#trainer-record-id");
+  const trainerFields = {
+    name: document.querySelector("#name"),
+    id_number: document.querySelector("#id_number"),
+    email: document.querySelector("#email"),
+    phone: document.querySelector("#phone"),
+    photo: document.querySelector("#photo"),
+    is_active: document.querySelector("#is_active"),
+  };
+  const photoPreview = document.querySelector("#photo-preview");
+  let currentInstitution = null;
+  let trainersCache = [];
+
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[char]));
+  }
+
+  function openTrainerModal(trainer = null) {
+    trainerForm.reset();
+    trainerRecordId.value = trainer?.id || "";
+    trainerModalTitle.textContent = trainer ? "Edit Trainer" : "Add Trainer";
+    trainerFields.name.value = trainer?.name || "";
+    trainerFields.id_number.value = trainer?.id_number || "";
+    trainerFields.email.value = trainer?.email || "";
+    trainerFields.phone.value = trainer?.phone || "";
+    trainerFields.is_active.value = String(trainer?.is_active ?? true);
+    trainerFields.photo.required = !trainer;
+    photoPreview.innerHTML = trainer?.photo
+      ? `<img src="${trainer.photo}" alt="Current trainer reference photo" style="width:96px;height:96px;object-fit:cover;border-radius:8px;border:1px solid #dce6e1;">`
+      : "<p class='muted'>No photo selected yet.</p>";
+    trainerModal.classList.add("open");
+  }
+
+  function closeTrainerModal() {
+    trainerModal.classList.remove("open");
+  }
+
+  async function loadInstitution() {
+    const response = await fetch("/api/institution-setup/current/");
+    currentInstitution = await response.json();
+    if (!currentInstitution.id) {
+      window.showAppModal("Setup Required", "Complete School Setup before adding trainers.", "warning");
+    }
+  }
+
+  async function loadTrainers() {
+    const response = await fetch("/api/trainers/");
+    trainersCache = await response.json();
+    if (!trainersCache.length) {
+      trainerList.innerHTML = "<p class='muted'>No trainers registered yet.</p>";
+      return;
+    }
+    trainerList.innerHTML = `
+      <table>
+        <thead><tr><th>Photo</th><th>Name</th><th>ID</th><th>Phone</th><th>Units</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${trainersCache.map((trainer) => `
+            <tr>
+              <td>${trainer.photo ? `<img src="${trainer.photo}" alt="${escapeHtml(trainer.name)} reference photo" style="width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid #dce6e1;">` : "<span class='muted'>Missing</span>"}</td>
+              <td>${escapeHtml(trainer.name)}</td>
+              <td>${escapeHtml(trainer.id_number)}</td>
+              <td>${escapeHtml(trainer.phone || "")}</td>
+              <td>${escapeHtml(trainer.assigned_units.map((unit) => unit.unit_code).join(", ") || "None")}</td>
+              <td>${trainer.is_active ? "Active" : "Inactive"}</td>
+              <td>
+                <div class="row-actions">
+                  <button class="secondary" type="button" data-edit-trainer="${trainer.id}">Edit</button>
+                  <button class="danger" type="button" data-delete-trainer="${trainer.id}">Delete</button>
+                </div>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  async function saveTrainer(event) {
+    event.preventDefault();
+    if (!currentInstitution?.id) {
+      window.showAppModal("Setup Required", "Complete School Setup first.", "warning");
+      return;
+    }
+    const id = trainerRecordId.value;
+    const payload = new FormData();
+    payload.append("institution", currentInstitution.id);
+    payload.append("name", trainerFields.name.value.trim());
+    payload.append("id_number", trainerFields.id_number.value.trim());
+    payload.append("email", trainerFields.email.value.trim());
+    payload.append("phone", trainerFields.phone.value.trim());
+    payload.append("is_active", trainerFields.is_active.value);
+    if (trainerFields.photo.files.length) {
+      payload.append("photo", trainerFields.photo.files[0]);
+    }
+
+    const response = await fetch(id ? `/api/trainers/${id}/` : "/api/trainers/", {
+      method: id ? "PATCH" : "POST",
+      headers: window.csrfHeaders(),
+      body: payload,
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      window.showAppModal("Could Not Save", payload.detail || "Check the trainer details and duplicate ID numbers.", "error");
+      return;
+    }
+    closeTrainerModal();
+    window.showAppModal("Trainer Saved", "The trainer record has been updated successfully.", "success");
+    loadTrainers();
+  }
+
+  async function deleteTrainer(id) {
+    if (!confirm("Delete this trainer record?")) return;
+    const response = await fetch(`/api/trainers/${id}/`, {
+      method: "DELETE",
+      headers: window.csrfHeaders(),
+    });
+    if (!response.ok) {
+      window.showAppModal("Could Not Delete", "The trainer could not be deleted.", "error");
+      return;
+    }
+    window.showAppModal("Trainer Deleted", "The trainer record has been removed.", "success");
+    loadTrainers();
+  }
+
+  document.querySelector("#open-trainer-modal").addEventListener("click", () => openTrainerModal());
+  document.querySelectorAll("[data-close-trainer-modal]").forEach((button) => {
+    button.addEventListener("click", closeTrainerModal);
+  });
+  trainerModal.addEventListener("click", (event) => {
+    if (event.target === trainerModal) closeTrainerModal();
+  });
+  trainerForm.addEventListener("submit", saveTrainer);
+  trainerFields.photo.addEventListener("change", () => {
+    const file = trainerFields.photo.files[0];
+    if (!file) return;
+    photoPreview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="Selected trainer reference photo preview" style="width:96px;height:96px;object-fit:cover;border-radius:8px;border:1px solid #dce6e1;">`;
+  });
+  trainerList.addEventListener("click", (event) => {
+    const editId = event.target.dataset.editTrainer;
+    const deleteId = event.target.dataset.deleteTrainer;
+    if (editId) openTrainerModal(trainersCache.find((trainer) => trainer.id === Number(editId)));
+    if (deleteId) deleteTrainer(deleteId);
+  });
+
+  loadInstitution().then(loadTrainers);
+</script>
+{% endblock %}

@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trainer Clock In/Out</title>
+  <style>
+    :root {
+      --bg: #f3f7f5;
+      --panel: #ffffff;
+      --ink: #14211d;
+      --muted: #63736e;
+      --line: #d7e3de;
+      --accent: #0e7a5f;
+      --soft: #e9f3ef;
+      --danger: #b42318;
+      --warn: #9a5b00;
+      --shadow: 0 18px 50px rgba(18, 33, 29, 0.13);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+    .terminal {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(320px, 1fr) minmax(320px, 420px);
+    }
+    .left, .right { padding: clamp(18px, 4vw, 36px); }
+    .left {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .right {
+      background: var(--panel);
+      border-left: 1px solid var(--line);
+      display: grid;
+      align-content: center;
+      gap: 16px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(34px, 5vw, 56px);
+      letter-spacing: 0;
+      line-height: 1;
+    }
+    h2, h3 { margin: 0 0 12px; }
+    .muted { color: var(--muted); }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+    }
+    label {
+      display: block;
+      font-weight: 800;
+      margin: 0 0 7px;
+    }
+    input, select {
+      width: 100%;
+      border: 1px solid #c8d8d2;
+      border-radius: 7px;
+      padding: 13px 12px;
+      font: inherit;
+      background: #fff;
+    }
+    button, .button {
+      border: 0;
+      border-radius: 7px;
+      padding: 13px 18px;
+      font: inherit;
+      font-weight: 850;
+      background: var(--accent);
+      color: white;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+    }
+    button.secondary, .button.secondary {
+      background: var(--soft);
+      color: var(--ink);
+    }
+    .camera-box {
+      aspect-ratio: 16 / 9;
+      border-radius: 8px;
+      background: #13231e;
+      color: white;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 16px;
+      overflow: hidden;
+      position: relative;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+    .status {
+      min-height: 22px;
+      margin-top: 14px;
+      font-weight: 800;
+    }
+    .status.error { color: var(--danger); }
+    .status.ready { color: var(--accent); }
+    .hidden { display: none !important; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+    .steps {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 22px 0;
+    }
+    .step-pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 10px;
+      background: white;
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .step-pill.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .stat {
+      background: var(--soft);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .stat strong { display: block; font-size: 22px; }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(8, 18, 15, 0.62);
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-card {
+      width: min(560px, 100%);
+      background: white;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      border-top: 4px solid var(--accent);
+    }
+    .modal-card.error .modal-head { border-top-color: var(--danger); }
+    .modal-card.warning .modal-head { border-top-color: var(--warn); }
+    .modal-body { padding: 20px; line-height: 1.55; }
+    .modal-close {
+      background: var(--soft);
+      color: var(--ink);
+      min-height: 34px;
+      padding: 6px 10px;
+    }
+    @media (max-width: 860px) {
+      .terminal { grid-template-columns: 1fr; }
+      .left { justify-content: flex-start; }
+      .right { border-left: 0; border-top: 1px solid var(--line); }
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="terminal">
+    <section class="left">
+      <div>
+        <h1>Trainer Clock</h1>
+        <p class="muted">Enter your ID, verify your face, then clock in or out of your class.</p>
+        <div class="steps" aria-label="Trainer login steps">
+          <span class="step-pill active" id="pill-id">1. ID</span>
+          <span class="step-pill" id="pill-face">2. Face</span>
+          <span class="step-pill" id="pill-dashboard">3. Dashboard</span>
+        </div>
+      </div>
+
+      <div class="card" id="step-id">
+        <form id="id-form">
+          <label for="trainer-id">Trainer ID Number</label>
+          <input id="trainer-id" autocomplete="off" required autofocus>
+          <div class="actions">
+            <button type="submit">Next</button>
+            <a class="button secondary" href="{% url 'landing-page' %}">Back</a>
+          </div>
+          <div class="status" id="trainer-status"></div>
+        </form>
+      </div>
+
+      <div class="card hidden" id="step-face">
+        <h2>Face Verification</h2>
+        <p class="muted">Look directly at the camera and keep your face inside the preview. The system will capture automatically when ready.</p>
+        <div class="actions">
+          <button type="button" id="verify-face-button">Verify Now</button>
+          <button class="secondary" type="button" id="change-id-button">Change ID</button>
+        </div>
+        <div class="status" id="face-status"></div>
+      </div>
+
+      <div class="card hidden" id="step-dashboard">
+        <h2 id="trainer-name"></h2>
+        <div id="active-session" class="hidden">
+          <p class="muted" id="active-session-text"></p>
+          <div class="actions">
+            <button type="button" id="clock-out-button">Clock Out</button>
+          </div>
+        </div>
+
+        <form id="clock-in-form" class="hidden">
+          <label for="unit-select">Select Unit</label>
+          <select id="unit-select" required></select>
+          <div class="actions">
+            <button type="submit">Clock In</button>
+            <button class="secondary" type="button" id="refresh-dashboard-button">Refresh</button>
+          </div>
+        </form>
+        <div class="status" id="attendance-status"></div>
+      </div>
+    </section>
+
+    <aside class="right">
+      <div class="card">
+        <h2>Camera Preview</h2>
+        <div class="camera-box" id="camera-box">
+          <video id="camera-preview" autoplay playsinline muted></video>
+          <div id="camera-placeholder">
+            <strong>Camera starts after ID</strong>
+            <p class="muted" style="color:#c8d8d1;">A live preview must be visible before verification and attendance actions.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Unit Stats</h2>
+        <div id="unit-stats"><p class="muted">After face verification, selected unit progress and remaining hours will appear here.</p></div>
+      </div>
+    </aside>
+  </main>
+
+  <div class="modal-backdrop" id="message-modal" role="dialog" aria-modal="true" aria-labelledby="message-title">
+    <div class="modal-card" id="message-card">
+      <div class="modal-head">
+        <h3 id="message-title">Message</h3>
+        <button class="modal-close" type="button" id="message-close">Close</button>
+      </div>
+      <div class="modal-body" id="message-body"></div>
+    </div>
+  </div>
+
+  <script>
+    const idForm = document.querySelector("#id-form");
+    const trainerIdInput = document.querySelector("#trainer-id");
+    const trainerStatus = document.querySelector("#trainer-status");
+    const faceStatus = document.querySelector("#face-status");
+    const attendanceStatus = document.querySelector("#attendance-status");
+    const cameraPreview = document.querySelector("#camera-preview");
+    const cameraPlaceholder = document.querySelector("#camera-placeholder");
+    const stepId = document.querySelector("#step-id");
+    const stepFace = document.querySelector("#step-face");
+    const stepDashboard = document.querySelector("#step-dashboard");
+    const trainerName = document.querySelector("#trainer-name");
+    const activeSessionPanel = document.querySelector("#active-session");
+    const activeSessionText = document.querySelector("#active-session-text");
+    const clockInForm = document.querySelector("#clock-in-form");
+    const unitSelect = document.querySelector("#unit-select");
+    const clockOutButton = document.querySelector("#clock-out-button");
+    const unitStats = document.querySelector("#unit-stats");
+    const messageModal = document.querySelector("#message-modal");
+    const messageCard = document.querySelector("#message-card");
+    const messageTitle = document.querySelector("#message-title");
+    const messageBody = document.querySelector("#message-body");
+    let cameraStream = null;
+    let verifiedTrainer = null;
+    let activeSession = null;
+    let pendingIdNumber = "";
+    let autoVerifyTimer = null;
+    let isVerifyingFace = false;
+
+    function showModal(title, message, type = "success") {
+      messageTitle.textContent = title;
+      messageBody.textContent = message;
+      messageCard.className = `modal-card ${type}`;
+      messageModal.classList.add("open");
+    }
+
+    function closeModal() {
+      messageModal.classList.remove("open");
+    }
+
+    function setStatus(element, message, isError = false) {
+      element.textContent = message;
+      element.classList.toggle("error", isError);
+      element.classList.toggle("ready", !isError && Boolean(message));
+    }
+
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(";").shift();
+      return "";
+    }
+
+    function csrfHeaders(extraHeaders = {}) {
+      const token = getCookie("csrftoken");
+      return token ? { ...extraHeaders, "X-CSRFToken": token } : extraHeaders;
+    }
+
+    function setStep(stepName) {
+      stepId.classList.toggle("hidden", stepName !== "id");
+      stepFace.classList.toggle("hidden", stepName !== "face");
+      stepDashboard.classList.toggle("hidden", stepName !== "dashboard");
+      document.querySelector("#pill-id").classList.toggle("active", stepName === "id");
+      document.querySelector("#pill-face").classList.toggle("active", stepName === "face");
+      document.querySelector("#pill-dashboard").classList.toggle("active", stepName === "dashboard");
+    }
+
+    function canUseCameraHere() {
+      const host = window.location.hostname;
+      const localHosts = ["localhost", "127.0.0.1", "::1"];
+      return window.isSecureContext || localHosts.includes(host);
+    }
+
+    async function startCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("This browser does not support camera capture.");
+      }
+      if (!canUseCameraHere()) {
+        throw new Error("Camera access is blocked because this page is not secure. Use HTTPS on the LAN address, or open this page on the backend computer using localhost.");
+      }
+      cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+        audio: false,
+      });
+      cameraPreview.srcObject = cameraStream;
+      cameraPreview.style.display = "block";
+      cameraPlaceholder.style.display = "none";
+    }
+
+    async function ensureCamera() {
+      if (cameraStream) return;
+      await startCamera();
+    }
+
+    async function captureSnapshot() {
+      await ensureCamera();
+      if (!cameraPreview.videoWidth) {
+        throw new Error("Camera is not ready yet. Please wait a moment and try again.");
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = cameraPreview.videoWidth;
+      canvas.height = cameraPreview.videoHeight;
+      canvas.getContext("2d").drawImage(cameraPreview, 0, 0);
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error("Could not capture snapshot."));
+            return;
+          }
+          resolve(blob);
+        }, "image/jpeg", 0.88);
+      });
+    }
+
+    async function verifyTrainerFace() {
+      const snapshot = await captureSnapshot();
+      const data = new FormData();
+      data.append("id_number", pendingIdNumber);
+      data.append("snapshot", snapshot, "trainer-verification.jpg");
+      const response = await fetch("/api/trainers/verify-face/", {
+        method: "POST",
+        headers: csrfHeaders(),
+        body: data,
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.detail || "Face verification failed.");
+      }
+      return payload.trainer;
+    }
+
+    async function loadActiveSession(trainerId) {
+      const response = await fetch(`/api/attendance-sessions/active-for-trainer/${trainerId}/`);
+      const payload = await response.json();
+      return payload.active_session;
+    }
+
+    function renderUnits(trainer) {
+      unitSelect.innerHTML = trainer.assigned_units.map((assignment) => (
+        `<option value="${assignment.unit}">${assignment.unit_code} - ${assignment.unit_name}</option>`
+      )).join("");
+    }
+
+    async function loadUnitStats(unitId) {
+      const response = await fetch(`/api/attendance-sessions/unit-stats/${verifiedTrainer.id}/${unitId}/`);
+      const stats = await response.json();
+      unitStats.innerHTML = `
+        <div class="stats-grid">
+          <div class="stat"><span class="muted">Completed</span><strong>${stats.credited_hours}</strong><span class="muted">hrs</span></div>
+          <div class="stat"><span class="muted">Target</span><strong>${stats.term_target_hours}</strong><span class="muted">hrs</span></div>
+          <div class="stat"><span class="muted">Remaining</span><strong>${stats.remaining_hours}</strong><span class="muted">hrs</span></div>
+          <div class="stat"><span class="muted">Progress</span><strong>${stats.progress_percent}%</strong></div>
+        </div>
+      `;
+    }
+
+    async function renderSessionState() {
+      stopAutoVerify();
+      setStep("dashboard");
+      trainerName.textContent = verifiedTrainer.name;
+      activeSession = await loadActiveSession(verifiedTrainer.id);
+      if (activeSession) {
+        activeSessionPanel.classList.remove("hidden");
+        clockInForm.classList.add("hidden");
+        activeSessionText.textContent = `Currently teaching ${activeSession.unit_code} - ${activeSession.unit_name}.`;
+        await loadUnitStats(activeSession.unit);
+      } else {
+        activeSessionPanel.classList.add("hidden");
+        clockInForm.classList.remove("hidden");
+        renderUnits(verifiedTrainer);
+        if (verifiedTrainer.assigned_units.length) {
+          await loadUnitStats(unitSelect.value);
+        } else {
+          unitStats.innerHTML = "<p class='muted'>No units are assigned to this trainer. Contact the system admin.</p>";
+        }
+      }
+    }
+
+    function stopAutoVerify() {
+      if (autoVerifyTimer) {
+        clearInterval(autoVerifyTimer);
+        autoVerifyTimer = null;
+      }
+    }
+
+    async function detectFaceInFrame() {
+      if (!("FaceDetector" in window) || !cameraPreview.videoWidth) {
+        return null;
+      }
+      const detector = new FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+      const faces = await detector.detect(cameraPreview);
+      return faces.length > 0;
+    }
+
+    function beginAutoVerify() {
+      stopAutoVerify();
+      let fallbackTicks = 0;
+      setStatus(faceStatus, "Look at the camera. Waiting for your face to be in frame...");
+      autoVerifyTimer = setInterval(async () => {
+        if (isVerifyingFace || stepFace.classList.contains("hidden")) return;
+        fallbackTicks += 1;
+        try {
+          const faceVisible = await detectFaceInFrame();
+          if (faceVisible === true || (faceVisible === null && fallbackTicks >= 4)) {
+            stopAutoVerify();
+            setStatus(faceStatus, "Face in frame. Capturing snapshot...");
+            document.querySelector("#verify-face-button").click();
+          } else if (faceVisible === false) {
+            setStatus(faceStatus, "Please look at the camera and center your face in the preview.");
+          } else {
+            setStatus(faceStatus, `Look at the camera. Auto capture in ${Math.max(1, 4 - fallbackTicks)}...`);
+          }
+        } catch (error) {
+          setStatus(faceStatus, "Look at the camera. Auto capture is preparing...");
+        }
+      }, 1000);
+    }
+
+    idForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      pendingIdNumber = trainerIdInput.value.trim();
+      if (!pendingIdNumber) return;
+      setStatus(trainerStatus, "Opening camera...");
+      try {
+        await ensureCamera();
+        setStatus(trainerStatus, "");
+        setStep("face");
+        beginAutoVerify();
+      } catch (error) {
+        setStatus(trainerStatus, error.message, true);
+        showModal("Camera Blocked", error.message, "warning");
+      }
+    });
+
+    document.querySelector("#verify-face-button").addEventListener("click", async () => {
+      if (isVerifyingFace) return;
+      isVerifyingFace = true;
+      stopAutoVerify();
+      setStatus(faceStatus, "Verifying face...");
+      try {
+        verifiedTrainer = await verifyTrainerFace();
+        setStatus(faceStatus, "Face verified.");
+        showModal("Face Verified", "You can now manage your class attendance.", "success");
+        await renderSessionState();
+      } catch (error) {
+        setStatus(faceStatus, error.message, true);
+        showModal("Verification Failed", error.message, "error");
+        beginAutoVerify();
+      } finally {
+        isVerifyingFace = false;
+      }
+    });
+
+    document.querySelector("#change-id-button").addEventListener("click", () => {
+      verifiedTrainer = null;
+      activeSession = null;
+      setStatus(trainerStatus, "");
+      setStatus(faceStatus, "");
+      setStatus(attendanceStatus, "");
+      stopAutoVerify();
+      setStep("id");
+      trainerIdInput.focus();
+    });
+
+    unitSelect.addEventListener("change", () => {
+      if (verifiedTrainer && unitSelect.value) loadUnitStats(unitSelect.value);
+    });
+
+    clockInForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!unitSelect.value) {
+        showModal("No Unit Assigned", "Select a unit before clocking in.", "warning");
+        return;
+      }
+      setStatus(attendanceStatus, "Clocking in...");
+      try {
+        const snapshot = await captureSnapshot();
+        const data = new FormData();
+        data.append("trainer", verifiedTrainer.id);
+        data.append("unit", unitSelect.value);
+        data.append("clock_in_photo", snapshot, "clock-in.jpg");
+        const response = await fetch("/api/attendance-sessions/clock-in/", {
+          method: "POST",
+          headers: csrfHeaders(),
+          body: data,
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail || "Clock-in failed.");
+        setStatus(attendanceStatus, "Clocked in.");
+        showModal("Clocked In", "Your class session has started.", "success");
+        await renderSessionState();
+      } catch (error) {
+        setStatus(attendanceStatus, error.message, true);
+        showModal("Clock In Failed", error.message, "error");
+      }
+    });
+
+    clockOutButton.addEventListener("click", async () => {
+      if (!activeSession) return;
+      setStatus(attendanceStatus, "Clocking out...");
+      try {
+        const snapshot = await captureSnapshot();
+        const data = new FormData();
+        data.append("clock_out_photo", snapshot, "clock-out.jpg");
+        const response = await fetch(`/api/attendance-sessions/${activeSession.id}/clock-out/`, {
+          method: "POST",
+          headers: csrfHeaders(),
+          body: data,
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail || "Clock-out failed.");
+        setStatus(attendanceStatus, `Clocked out. Credited ${payload.credited_minutes} minutes.`);
+        showModal("Clocked Out", `Attendance saved. Credited ${payload.credited_minutes} minutes.`, "success");
+        await renderSessionState();
+      } catch (error) {
+        setStatus(attendanceStatus, error.message, true);
+        showModal("Clock Out Failed", error.message, "error");
+      }
+    });
+
+    document.querySelector("#refresh-dashboard-button").addEventListener("click", renderSessionState);
+    document.querySelector("#message-close").addEventListener("click", closeModal);
+    messageModal.addEventListener("click", (event) => {
+      if (event.target === messageModal) closeModal();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+{% extends "web/base.html" %}
+
+{% block title %}Dashboard - Clock In Out{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Dashboard</h2>
+    <p class="muted">System overview for the school attendance server.</p>
+  </div>
+  <div>
+    <a class="button secondary" href="{% url 'clock-page' %}">Open Trainer Clock</a>
+    <a class="button secondary" href="{% url 'reports-page' %}">Reports</a>
+    <a class="button" href="{% url 'setup-page' %}">System Setup</a>
+  </div>
+</div>
+
+<section class="grid">
+  <a class="panel" href="{% url 'setup-page' %}" style="text-decoration:none;color:inherit;">
+    <div class="metric">{{ institution_count }}</div>
+    <div class="muted">Institutions</div>
+  </a>
+  <a class="panel" href="{% url 'trainers-page' %}" style="text-decoration:none;color:inherit;">
+    <div class="metric">{{ trainer_count }}</div>
+    <div class="muted">Trainers</div>
+  </a>
+  <a class="panel" href="{% url 'units-page' %}" style="text-decoration:none;color:inherit;">
+    <div class="metric">{{ unit_count }}</div>
+    <div class="muted">Units</div>
+  </a>
+  <a class="panel" href="{% url 'active-classes-page' %}" style="text-decoration:none;color:inherit;">
+    <div class="metric">{{ active_session_count }}</div>
+    <div class="muted">Active classes</div>
+  </a>
+</section>
+
+<section class="panel" style="margin-top: 18px;">
+  <h3>Recent Attendance</h3>
+  {% if recent_sessions %}
+    <table>
+      <thead>
+        <tr>
+          <th>Trainer</th>
+          <th>Unit</th>
+          <th>Clock In</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for session in recent_sessions %}
+          <tr>
+            <td>{{ session.trainer.name }}</td>
+            <td>{{ session.unit.code }} - {{ session.unit.name }}</td>
+            <td>{{ session.clock_in_at }}</td>
+            <td>{% if session.is_active %}Active{% else %}Closed{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No attendance sessions yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

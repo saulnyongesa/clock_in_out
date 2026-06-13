@@ -1,0 +1,43 @@
+{% extends "web/base.html" %}
+
+{% block title %}Attendance - Clock In Out{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Attendance History</h2>
+    <p class="muted">Recent attendance sessions.</p>
+  </div>
+</div>
+
+<section class="panel">
+  {% if sessions %}
+    <table>
+      <thead>
+        <tr>
+          <th>Trainer</th>
+          <th>Unit</th>
+          <th>Clock In</th>
+          <th>Clock Out</th>
+          <th>Actual</th>
+          <th>Credited</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for session in sessions %}
+          <tr>
+            <td>{{ session.trainer.name }}</td>
+            <td>{{ session.unit.code }} - {{ session.unit.name }}</td>
+            <td>{{ session.clock_in_at }}</td>
+            <td>{{ session.clock_out_at|default:"Active" }}</td>
+            <td>{{ session.actual_minutes|default:"-" }}</td>
+            <td>{{ session.credited_minutes|default:"-" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No attendance records yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

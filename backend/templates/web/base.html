@@ -1,0 +1,343 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Clock In Out{% endblock %}</title>
+  <style>
+    :root {
+      --bg: #f6f8f7;
+      --panel: #ffffff;
+      --ink: #16211d;
+      --muted: #65746f;
+      --line: #dce6e1;
+      --accent: #0e7a5f;
+      --accent-strong: #095c48;
+      --soft: #eaf3ef;
+      --danger: #b42318;
+      --warn: #9a5b00;
+      --shadow: 0 18px 50px rgba(18, 33, 29, 0.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+    a { color: inherit; }
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+    }
+    .sidebar {
+      background: #13231e;
+      color: white;
+      padding: 22px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: var(--accent);
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+    }
+    .nav-group { display: grid; gap: 4px; }
+    .nav-heading {
+      margin: 10px 8px 4px;
+      color: #8fb4a8;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: #e0f2ec;
+      text-decoration: none;
+      padding: 10px 10px;
+      border-radius: 7px;
+      font-weight: 650;
+    }
+    .nav-link:hover { background: rgba(255,255,255,0.1); }
+    .nav-link.subtle { color: #bad8cf; }
+    .mobile-topbar {
+      display: none;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: #13231e;
+      color: white;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+    }
+    main { padding: 26px; min-width: 0; }
+    .page-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    h2 { margin: 0; font-size: clamp(25px, 3vw, 34px); }
+    h3 { margin: 0 0 12px; }
+    .muted { color: var(--muted); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .metric {
+      font-size: 34px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 7px;
+    }
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid #cbd8d2;
+      border-radius: 7px;
+      padding: 11px 12px;
+      font: inherit;
+      background: white;
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    button, .button {
+      border: 0;
+      border-radius: 7px;
+      padding: 11px 16px;
+      font: inherit;
+      font-weight: 800;
+      background: var(--accent);
+      color: white;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+    }
+    button.secondary, .button.secondary {
+      background: var(--soft);
+      color: var(--ink);
+    }
+    button.danger, .button.danger { background: var(--danger); }
+    button.ghost, .button.ghost {
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .button-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .status { margin-top: 14px; font-weight: 700; }
+    .status.error { color: var(--danger); }
+    .table-wrap { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 680px; }
+    th, td {
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      padding: 11px 8px;
+      vertical-align: middle;
+    }
+    th { color: var(--muted); font-size: 13px; }
+    .row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .row-actions button { padding: 8px 10px; min-height: 34px; font-size: 14px; }
+    .camera-box {
+      aspect-ratio: 16 / 9;
+      border-radius: 8px;
+      background: #13231e;
+      color: white;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 16px;
+    }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(8, 18, 15, 0.62);
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-card {
+      width: min(620px, 100%);
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,.2);
+    }
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    .modal-head h3 { margin: 0; }
+    .modal-body { padding: 20px; }
+    .modal-close {
+      background: var(--soft);
+      color: var(--ink);
+      padding: 6px 10px;
+      min-height: 34px;
+    }
+    .message-card.success .modal-head { border-top: 4px solid var(--accent); }
+    .message-card.error .modal-head { border-top: 4px solid var(--danger); }
+    .message-card.warning .modal-head { border-top: 4px solid var(--warn); }
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .mobile-topbar { display: flex; align-items: center; justify-content: space-between; }
+      .sidebar {
+        position: static;
+        display: grid;
+        grid-template-columns: 1fr;
+        padding: 14px 16px;
+      }
+      .sidebar .brand { display: none; }
+      main { padding: 18px 14px 28px; }
+      .page-head { align-items: flex-start; flex-direction: column; }
+      .form-grid { grid-template-columns: 1fr; }
+      table { min-width: 620px; }
+    }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div class="mobile-topbar">
+    <div class="brand"><span class="brand-mark">CI</span><span>Clock In Out</span></div>
+    <a class="button secondary" href="{% url 'clock-page' %}">Trainer Clock</a>
+  </div>
+  <div class="shell">
+    <nav class="sidebar" aria-label="Admin navigation">
+      <div class="brand"><span class="brand-mark">CI</span><span>Clock In Out</span></div>
+      <div class="nav-group">
+        <div class="nav-heading">Overview</div>
+        <a class="nav-link" href="{% url 'web-dashboard' %}">Dashboard</a>
+        <a class="nav-link subtle" href="{% url 'clock-page' %}">Trainer Clock</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-heading">People & Courses</div>
+        <a class="nav-link" href="{% url 'trainers-page' %}">Trainers</a>
+        <a class="nav-link" href="{% url 'units-page' %}">Units</a>
+        <a class="nav-link" href="{% url 'assignments-page' %}">Assignments</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-heading">Attendance</div>
+        <a class="nav-link" href="{% url 'active-classes-page' %}">Active Classes</a>
+        <a class="nav-link" href="{% url 'attendance-history-page' %}">Attendance History</a>
+        <a class="nav-link" href="{% url 'reports-page' %}">Reports</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-heading">System</div>
+        <a class="nav-link" href="{% url 'setup-page' %}">School Setup</a>
+        <a class="nav-link" href="{% url 'monitor-dashboard' %}">Backend Monitor</a>
+        <a class="nav-link subtle" href="/admin/">Django Admin</a>
+      </div>
+    </nav>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="message-modal" role="dialog" aria-modal="true" aria-labelledby="message-modal-title">
+    <div class="modal-card message-card" id="message-modal-card">
+      <div class="modal-head">
+        <h3 id="message-modal-title">Message</h3>
+        <button class="modal-close" type="button" data-close-message>Close</button>
+      </div>
+      <div class="modal-body">
+        <p id="message-modal-body" style="margin:0;"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const messageModal = document.querySelector("#message-modal");
+    const messageModalCard = document.querySelector("#message-modal-card");
+    const messageModalTitle = document.querySelector("#message-modal-title");
+    const messageModalBody = document.querySelector("#message-modal-body");
+
+    function showAppModal(title, message, type = "success") {
+      messageModalTitle.textContent = title || "Message";
+      messageModalBody.textContent = message || "";
+      messageModalCard.className = `modal-card message-card ${type}`;
+      messageModal.classList.add("open");
+    }
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(";").shift();
+      return "";
+    }
+    function csrfHeaders(extraHeaders = {}) {
+      const token = getCookie("csrftoken");
+      return token ? { ...extraHeaders, "X-CSRFToken": token } : extraHeaders;
+    }
+    function closeAppModal() {
+      messageModal.classList.remove("open");
+    }
+    window.showAppModal = showAppModal;
+    window.closeAppModal = closeAppModal;
+    window.getCookie = getCookie;
+    window.csrfHeaders = csrfHeaders;
+    document.querySelector("[data-close-message]").addEventListener("click", closeAppModal);
+    messageModal.addEventListener("click", (event) => {
+      if (event.target === messageModal) closeAppModal();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeAppModal();
+    });
+  </script>
+  {% if messages %}
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        {% for message in messages %}
+          window.showAppModal("{{ message.tags|default:'Message'|title|escapejs }}", "{{ message|escapejs }}", "{{ message.tags|default:'success'|escapejs }}");
+        {% endfor %}
+      });
+    </script>
+  {% endif %}
+  {% block scripts %}{% endblock %}
+</body>
+</html>

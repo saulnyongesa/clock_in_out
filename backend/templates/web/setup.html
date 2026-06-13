@@ -1,0 +1,161 @@
+{% extends "web/base.html" %}
+
+{% block title %}System Setup - Clock In Out{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>System Setup</h2>
+    <p class="muted">Configure school branding, LAN URLs, and attendance policy.</p>
+  </div>
+  <button type="button" class="secondary" id="reload-network">Refresh IPs</button>
+</div>
+
+<section class="grid">
+  <div class="panel">
+    <h3>Backend URLs</h3>
+    <p class="muted">Use these URLs later when desktop or mobile apps are added.</p>
+    <div id="network-list">Loading network details...</div>
+  </div>
+  <div class="panel">
+    <h3>Logo</h3>
+    <p class="muted">Upload the logo that appears on school pages and future reports.</p>
+    <input type="file" id="school-logo" accept="image/png,image/jpeg">
+    <div id="logo-preview" style="margin-top: 14px;"></div>
+  </div>
+</section>
+
+<section class="panel" style="margin-top: 18px;">
+  <form id="setup-form">
+    <div class="form-grid">
+      <div>
+        <label for="name">School Name</label>
+        <input id="name" name="name" required>
+      </div>
+      <div>
+        <label for="email">School Email</label>
+        <input id="email" name="email" type="email">
+      </div>
+      <div>
+        <label for="phone">School Phone</label>
+        <input id="phone" name="phone">
+      </div>
+      <div>
+        <label for="default_class_minutes">Default Class Minutes</label>
+        <input id="default_class_minutes" name="default_class_minutes" type="number" min="1" value="60">
+      </div>
+      <div>
+        <label for="clock_out_allowance_minutes">Clock-out Allowance Minutes</label>
+        <input id="clock_out_allowance_minutes" name="clock_out_allowance_minutes" type="number" min="0" value="10">
+      </div>
+      <div>
+        <label for="address">Address</label>
+        <textarea id="address" name="address"></textarea>
+      </div>
+    </div>
+    <div style="margin-top: 18px;">
+      <button type="submit">Save Setup</button>
+      <button type="button" class="secondary" id="load-setup">Reload Setup</button>
+    </div>
+    <div class="status" id="setup-status"></div>
+  </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const setupStatus = document.querySelector("#setup-status");
+  const setupForm = document.querySelector("#setup-form");
+  const networkList = document.querySelector("#network-list");
+  const logoInput = document.querySelector("#school-logo");
+  const logoPreview = document.querySelector("#logo-preview");
+
+  function setStatus(message, isError = false) {
+    setupStatus.textContent = message;
+    setupStatus.classList.toggle("error", isError);
+  }
+
+  async function loadNetwork() {
+    networkList.textContent = "Loading network details...";
+    try {
+      const response = await fetch("/api/network/");
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (!data.addresses.length) {
+        networkList.innerHTML = "<p>No LAN IP detected.</p>";
+        return;
+      }
+      networkList.innerHTML = data.addresses.map((item) => `
+        <p><strong>${item.ip}</strong><br><code>${item.backend_url}</code></p>
+      `).join("");
+    } catch (error) {
+      networkList.textContent = "Could not load network details.";
+    }
+  }
+
+  async function loadSetup() {
+    setStatus("Loading setup...");
+    try {
+      const response = await fetch("/api/institution-setup/current/");
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      setupForm.name.value = data.name || "";
+      setupForm.email.value = data.email || "";
+      setupForm.phone.value = data.phone || "";
+      setupForm.address.value = data.address || "";
+      setupForm.default_class_minutes.value = data.default_class_minutes || 60;
+      setupForm.clock_out_allowance_minutes.value = data.clock_out_allowance_minutes || 10;
+      logoPreview.innerHTML = data.logo
+        ? `<img src="${data.logo}" alt="School logo" style="max-width: 180px; max-height: 120px; border: 1px solid #d7e3de; border-radius: 6px; padding: 6px;">`
+        : "<p class='muted'>No logo uploaded yet.</p>";
+      setStatus(data.name ? `Loaded setup for ${data.name}.` : "No setup saved yet.");
+    } catch (error) {
+      setStatus("Could not load setup.", true);
+    }
+  }
+
+  async function saveSetup(event) {
+    event.preventDefault();
+    const schoolName = setupForm.name.value.trim();
+    if (!schoolName) {
+      setStatus("School name is required.", true);
+      window.showAppModal("Missing School Name", "School name is required before setup can be saved.", "warning");
+      return;
+    }
+    const payload = new FormData();
+    payload.append("name", schoolName);
+    payload.append("email", setupForm.email.value.trim());
+    payload.append("phone", setupForm.phone.value.trim());
+    payload.append("address", setupForm.address.value.trim());
+    payload.append("default_class_minutes", setupForm.default_class_minutes.value || "60");
+    payload.append("clock_out_allowance_minutes", setupForm.clock_out_allowance_minutes.value || "10");
+    if (logoInput.files.length) {
+      payload.append("logo", logoInput.files[0]);
+    }
+    setStatus("Saving setup...");
+    try {
+      const response = await fetch("/api/institution-setup/current/", {
+        method: "POST",
+        headers: window.csrfHeaders(),
+        body: payload,
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (data.logo) {
+        logoPreview.innerHTML = `<img src="${data.logo}" alt="School logo" style="max-width: 180px; max-height: 120px; border: 1px solid #d7e3de; border-radius: 6px; padding: 6px;">`;
+      }
+      setStatus(`Saved setup for ${data.name}.`);
+      window.showAppModal("Setup Saved", `Saved setup for ${data.name}.`, "success");
+    } catch (error) {
+      setStatus("Could not save setup.", true);
+      window.showAppModal("Could Not Save Setup", "Check the setup values and try again.", "error");
+    }
+  }
+
+  setupForm.addEventListener("submit", saveSetup);
+  document.querySelector("#load-setup").addEventListener("click", loadSetup);
+  document.querySelector("#reload-network").addEventListener("click", loadNetwork);
+  loadNetwork();
+  loadSetup();
+</script>
+{% endblock %}

@@ -1,47 +1,72 @@
 # Architecture
 
-## Mono-Repo
+## Current Direction
 
-All project source lives in one repository:
+Clock In Out is a Django web system.
+
+Django provides:
+
+- Server-rendered browser pages.
+- Vanilla JavaScript interactions.
+- JSON API endpoints.
+- Django admin.
+- LAN monitor page.
+- Attendance business rules.
+
+Future desktop or mobile apps can be added later as API clients, but the web system must remain complete and usable on its own.
+
+## Repository Layout
 
 ```text
 clock_in_out/
   backend/
-  frontend/
-    desktop_attendance/
-    mobile_registration/
+    config/
+    institutions/
+    academics/
+    trainers/
+    attendance/
+    templates/
   docs/
 ```
 
-## Backend
+## Backend Apps
 
-Django will provide:
+- `institutions` - school profile, logo, contact information, allowance policy.
+- `academics` - terms and units.
+- `trainers` - trainer profiles, reference photos, DeepFace verification, unit assignment.
+- `attendance` - clock-in/out sessions, mandatory audit photos, credited minutes.
+- `config` - project settings, URLs, monitor pages, web entry pages.
 
-- Admin dashboard.
-- JSON API for Flutter apps.
-- Institution setup.
-- Trainer management.
-- Unit management.
-- Attendance sessions.
-- Reports and exports.
+## Frontend Approach
 
-Recommended Django apps:
+The frontend is Django templates plus vanilla JavaScript.
 
-- `accounts` - admin users, auth, institution ownership.
-- `institutions` - school profile, logo, policies.
-- `trainers` - trainer profiles, PIN management, trainer-unit assignment.
-- `academics` - terms, units, course metadata if needed.
-- `attendance` - clock-in/out sessions, allowance rules, audit photos.
-- `reports` - summaries for admin and trainers.
+Rules:
 
-## Frontend
+- Use template pages for navigation and layout.
+- Keep admin pages separate from trainer-facing clock pages.
+- Use `fetch` for API calls.
+- Keep endpoints reusable for future apps.
+- Keep JavaScript small and page-specific.
+- Avoid React, Vue, Flutter, or other frontend frameworks for the web version.
 
-Flutter apps:
+## LAN/IP Handling
 
-- Desktop attendance terminal: Windows/Linux first.
-- Mobile registration app: Android first, iOS later if needed.
+At startup, Django dynamically adds local access hosts:
 
-Both apps should talk to the same Django API.
+- localhost
+- 127.0.0.1
+- hostname
+- detected LAN IPs
+
+The monitor page and `/api/network/` show the URLs that LAN users and future apps can use.
+
+## Web Areas
+
+- `/app/` - admin dashboard and management pages.
+- `/app/setup/` - school setup and LAN/IP details.
+- `/trainer/clock/` - trainer-facing clock terminal.
+- `/` - backend monitor.
 
 ## Attendance Rounding Policy
 
@@ -52,11 +77,11 @@ Example:
 - Unit/class expected duration: 60 minutes.
 - Allowance: 10 minutes.
 - Trainer clocks out at 50 minutes.
-- Backend records 60 minutes because the missing 10 minutes is within allowance.
+- Backend records 60 credited minutes because the missing 10 minutes is within allowance.
 
-The backend should always store both:
+The backend stores:
 
 - actual duration
 - credited duration
 
-This keeps reports honest while allowing practical grace.
+Reports should show both.
